@@ -16,6 +16,9 @@ struct SigningSection: View {
     @State private var p12Password = ""
     @State private var manualUDID = ""
     @State private var manualName = ""
+    @State private var savedRequest: URL?
+    @State private var notice: String?
+    @State private var showNewCertificate = false
 
     var body: some View {
         Section {
@@ -24,7 +27,7 @@ struct SigningSection: View {
         } header: {
             Text("Signing")
         } footer: {
-            Text("With an App Store Connect API key, SelfStore registers iPhones, creates ad hoc profiles and re-signs every upload so it installs on all registered devices. It can also upload any build to TestFlight, and sign and notarize Mac app projects as .dmg and .zip. The key is kept in your Keychain.")
+            Text("With an App Store Connect API key, SelfStore registers iPhones, creates ad hoc profiles and re-signs every upload so it installs on all registered devices. It can also upload any build to TestFlight, and sign and notarize Mac app projects as .dmg and .zip. The API key and signing certificates are kept in your login keychain.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -105,20 +108,21 @@ struct SigningSection: View {
                 Text("\(dev.commonName)\(dev.expires.map { " · expires \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
             } label: {
                 Text("Developer ID")
-                if dev.inLoginKeychain { Text("From your login keychain").font(.caption).foregroundStyle(.secondary) }
+                Button(showNewCertificate ? "Cancel" : "Get a New Certificate…") { showNewCertificate.toggle() }
+                    .buttonStyle(.link).font(.caption)
             }
+            if showNewCertificate { newCertificateSteps }
         } else {
             LabeledContent {
-                HStack {
-                    Button("Refresh") { Task { await signing.refresh() } }
-                    Button("Import .p12…") { chooseP12() }
-                }
+                Button("Refresh") { Task { await signing.refresh() } }
             } label: {
                 Text("Developer ID")
-                Text("Signs and notarizes Mac app builds. Apple only lets the Account Holder create one: Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸ Developer ID Application, then click Refresh.")
+                Text("Signs and notarizes Mac app builds. Apple only lets the Account Holder create one, so it's made on developer.apple.com.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            newCertificateSteps
         }
+        if let notice { Text(notice).font(.caption).foregroundStyle(.green) }
 
         if let p12URL {
             HStack {
@@ -165,6 +169,67 @@ struct SigningSection: View {
         .task { if signing.identity == nil && signing.busy == nil { await signing.refresh() } }
     }
 
+    /// Save a CSR → upload on developer.apple.com → drop the .cer back here.
+    @ViewBuilder private var newCertificateSteps: some View {
+        HStack {
+            Text("1. Save a signing request")
+            Spacer()
+            Button(signing.hasPendingRequest ? "Save Signing Request Again…" : "Save Signing Request…") { saveRequest() }
+        }
+        HStack {
+            Text("2. Upload it as a Developer ID Application certificate")
+            Spacer()
+            Button("Open developer.apple.com") {
+                NSWorkspace.shared.open(URL(string: "https://developer.apple.com/account/resources/certificates/add")!)
+            }
+        }
+        if let savedRequest {
+            Text("Saved \(savedRequest.lastPathComponent). On the website choose Developer ID ▸ Developer ID Application ▸ G2 Sub-CA and upload it.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        CertificateDropZone(title: "3. Drop the downloaded .cer here",
+                            subtitle: "or a .p12 exported from another Mac",
+                            choose: { chooseCertificate() },
+                            handle: { handleDropped($0) })
+    }
+
+    private func saveRequest() {
+        let panel = NSSavePanel()
+        panel.title = "Save Signing Request"
+        panel.message = "Upload this file on developer.apple.com to get a Developer ID Application certificate."
+        panel.nameFieldStringValue = "SelfStore.certSigningRequest"
+        panel.allowedContentTypes = [UTType(filenameExtension: "certSigningRequest") ?? .data]
+        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        run {
+            try await signing.saveSigningRequest(to: url)
+            savedRequest = url
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
+
+    private func chooseCertificate() {
+        let panel = NSOpenPanel()
+        panel.message = "Choose the certificate you downloaded (.cer) or an exported identity (.p12)"
+        panel.allowedContentTypes = ["cer", "crt", "pem", "p12"].compactMap { UTType(filenameExtension: $0) }
+        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        if panel.runModal() == .OK, let url = panel.url { handleDropped(url) }
+    }
+
+    private func handleDropped(_ url: URL) {
+        notice = nil
+        if url.pathExtension.lowercased() == "p12" {
+            p12URL = url // asks for its password below
+            return
+        }
+        run {
+            let name = try await signing.importCertificate(url)
+            savedRequest = nil
+            showNewCertificate = false
+            notice = "Added \(name)."
+        }
+    }
+
     private func chooseP12() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "p12") ?? .data]
@@ -177,6 +242,40 @@ struct SigningSection: View {
         Task {
             do { try await work() } catch { self.error = error.localizedDescription }
             working = false
+        }
+    }
+}
+
+/// Dashed drop target for certificate files.
+private struct CertificateDropZone: View {
+    let title: String
+    let subtitle: String
+    let choose: () -> Void
+    let handle: (URL) -> Void
+    @State private var targeted = false
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: "checkmark.seal").font(.title2).foregroundStyle(targeted ? Color.accentColor : .secondary)
+            Text(title).font(.callout.weight(.medium))
+            HStack(spacing: 4) {
+                Text(subtitle).foregroundStyle(.secondary)
+                Button("Choose File…", action: choose).buttonStyle(.link)
+            }
+            .font(.caption)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(targeted ? Color.accentColor.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(targeted ? Color.accentColor : .secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
+        .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in
+            guard let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }
+                Task { @MainActor in handle(url) }
+            }
+            return true
         }
     }
 }

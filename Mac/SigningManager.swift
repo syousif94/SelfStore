@@ -71,7 +71,6 @@ final class SigningManager {
             certificateID = match?.1.id
             // Developer ID is optional; some keys can't list those certificates.
             let devCerts = (try? await client.developerIDCertificates()) ?? []
-            // Prefer SelfStore's own keychain, then the login keychain (certificates created in Xcode).
             let team = identity?.commonName.firstMatch(of: /\(([A-Z0-9]{10})\)\s*$/).map { String($0.1) }
             func pick(_ list: [SigningKeychain.Identity]) -> SigningKeychain.Identity? {
                 list.filter { id in
@@ -81,10 +80,6 @@ final class SigningManager {
                 }.max { ($0.expires ?? .distantPast) < ($1.expires ?? .distantPast) }
             }
             developerID = pick(ids)
-            if developerID == nil {
-                let login = (try? await Task.detached { try SigningKeychain.loginDeveloperIDs() }.value) ?? []
-                developerID = pick(login)
-            }
             lastError = nil
             if identity == nil {
                 status = "Needs an Apple Distribution certificate"
@@ -126,6 +121,21 @@ final class SigningManager {
         if (identity != nil) == hadDistribution && (developerID != nil) == hadDeveloperID {
             throw ASCError(status: 0, message: "Imported, but that isn't a new Apple Distribution or Developer ID Application certificate on this API key's team.")
         }
+    }
+
+    var hasPendingRequest: Bool { keychain.hasPendingRequest }
+
+    func saveSigningRequest(to url: URL) async throws {
+        let kc = keychain
+        try await Task.detached { try kc.writeSigningRequest(to: url) }.value
+    }
+
+    /// Imports a certificate downloaded from developer.apple.com for a request saved by SelfStore.
+    func importCertificate(_ url: URL) async throws -> String {
+        let kc = keychain
+        let name = try await Task.detached { try kc.importCertificate(url) }.value
+        await refresh()
+        return name
     }
 
     /// Team ID, read from a certificate's "Name (TEAMID)" common name.

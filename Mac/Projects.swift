@@ -335,10 +335,8 @@ final class ProjectStore {
         let signing = SigningManager.shared
         if signing.credentials != nil && signing.developerID == nil { await signing.refresh() }
         let devID = signing.developerID
-        let ownKeychain = devID.map { !$0.inLoginKeychain } ?? false
-        let config = MacPackager.Signing(identity: devID?.sha1 ?? "-", keychain: ownKeychain ? signing.keychain.path : nil,
+        let config = MacPackager.Signing(identity: devID?.sha1 ?? "-", keychain: devID == nil ? nil : signing.keychain.path,
                                          teamID: signing.teamID, notarize: devID == nil ? nil : signing.credentials)
-        if ownKeychain { try await Task.detached { try SigningKeychain.standard.prepare() }.value }
         let out = outputDir(id)
         let result = try await Task.detached {
             try MacPackager.package(settings: settings, signing: config, out: out) { step in
