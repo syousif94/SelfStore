@@ -118,7 +118,7 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 /* The SelfStore dropdown, a copy of the real menu bar panel. */
 .panel {
-  position: absolute; top: 6px; width: 300px; z-index: 5;
+  position: fixed; top: 34px; width: 300px; z-index: 30;
   background: var(--panel); color: var(--ink);
   backdrop-filter: saturate(180%) blur(30px); -webkit-backdrop-filter: saturate(180%) blur(30px);
   border-radius: 12px; padding: 6px 5px; font-size: 13px; line-height: 1.25;
@@ -129,8 +129,10 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .panel .head { display: flex; align-items: center; justify-content: space-between; padding: 3px 9px 6px; }
 .panel .head b { font-size: 13px; }
 .panel .head small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
-.switch { width: 32px; height: 19px; border-radius: 10px; background: var(--blue); position: relative; flex: none; }
-.switch::after { content: ""; position: absolute; right: 2px; top: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch { width: 32px; height: 19px; border-radius: 10px; background: var(--blue); position: relative; flex: none; border: 0; padding: 0; cursor: pointer; transition: background .2s; }
+.switch.off { background: var(--panel-hover); }
+.switch.off::after { right: 15px; }
+.switch::after { content: ""; position: absolute; right: 2px; transition: right .2s; top: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .panel hr { border: 0; height: 1px; background: var(--panel-rule); margin: 5px 9px; }
 .panel h6 { margin: 0; padding: 8px 9px 3px; font-size: 11px; font-weight: 600; color: var(--muted); }
 .panel .row { display: flex; align-items: center; gap: 8px; padding: 3px 9px; min-height: 32px; border-radius: 7px; }
@@ -138,33 +140,39 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .panel .row img { width: 26px; height: 26px; border-radius: 6px; }
 .panel .row .t { flex: 1; min-width: 0; }
 .panel .row .t span { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.panel .row .n { font-size: 11px; color: var(--muted); }
+.panel .row .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .panel .glyph { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-hover); flex: none; }
 .panel .glyph.on { background: var(--blue); color: #fff; }
 .panel .glyph svg { width: 13px; height: 13px; }
-.panel .cmd { padding: 4px 9px; min-height: 22px; border-radius: 7px; }
+.panel .cmd { padding: 4px 9px; min-height: 22px; border-radius: 7px; cursor: default; }
+.panel .row, .panel .cmd { cursor: default; }
+.panel .cmd.done::after { content: " · Copied"; color: var(--muted); }
+/* Nudge toward the interactive menu until it has been opened once. */
+.menubar .status .extra { position: relative; }
+.extra.hint::after { content: ""; position: absolute; inset: -2px; border-radius: 7px; box-shadow: 0 0 0 2px var(--blue); animation: hint 1.8s ease-out infinite; }
+@keyframes hint { 0% { opacity: .9; transform: scale(.9); } 100% { opacity: 0; transform: scale(1.35); } }
+.try { font: inherit; color: var(--blue); background: none; border: 0; padding: 0; cursor: pointer; }
+.try:hover { text-decoration: underline; }
 .panel .cmd:hover { background: var(--panel-hover); }
 
-/* On phones the menu still hangs from its menu bar item, trimmed, with the text right under it. */
 @media (max-width: 860px) {
-  .desktop { padding-top: 272px; padding-bottom: 56px; }
-  .panel { width: min(280px, calc(100vw - 16px)); }
-  .panel .m-hide { display: none; }
+  .desktop { padding-top: 40px; padding-bottom: 56px; }
+  .panel { width: min(300px, calc(100vw - 16px)); }
   .hero-copy h1 { font-size: 34px; margin-bottom: 12px; }
   .hero-copy p { font-size: 16px; margin-bottom: 20px; }
 }
 
 /* ---------- Adding apps (hero stage) ---------- */
-.stage-wrap { margin-top: 88px; }
-@media (max-width: 860px) { .stage-wrap { margin-top: 56px; } }
-.addsteps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: a; }
-@media (max-width: 860px) { .addsteps { grid-template-columns: 1fr 1fr; margin-bottom: 24px; } }
+.stage-wrap { margin-top: 64px; }
+@media (max-width: 860px) { .stage-wrap { margin-top: 44px; } }
+.addsteps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; counter-reset: a; }
+/* Phones show just the step that is playing. */
+@media (max-width: 860px) { .addsteps { grid-template-columns: 1fr; margin-bottom: 20px; } .addsteps li:not(.now) { display: none; } }
 .addsteps li { counter-increment: a; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--muted); transition: background .3s, box-shadow .3s; }
 .addsteps li b { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; margin-bottom: 3px; }
 .addsteps li b::before { content: counter(a); display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid var(--rule); font-size: 11px; transition: all .3s; }
 .addsteps li.now { background: color-mix(in srgb, var(--page) 78%, transparent); box-shadow: 0 0 0 1px var(--rule); }
 .addsteps li.now b::before { background: var(--blue); border-color: var(--blue); color: #fff; }
-@media (max-width: 520px) { .addsteps li span { display: none; } .addsteps li b { margin: 0; font-size: 13px; } }
 
 .stage { display: grid; grid-template-columns: 1fr 270px; gap: 48px; align-items: center; }
 @media (max-width: 860px) { .stage { grid-template-columns: 1fr; gap: 36px; } }
@@ -251,6 +259,9 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .mphone .app .item .t { font-size: 13px; }
 .mphone .app .item .t span { font-size: 11px; white-space: nowrap; }
 .mphone .pill { min-width: 54px; padding: 0 10px; font-size: 12px; }
+.mphone .home .grid { gap: 16px 0; padding: 60px 10px 0; }
+.mphone .home .ic .sq, .mphone .home .ic .blank, .mphone .home .dock .blank { width: 48px; height: 48px; border-radius: 12px; }
+.mphone .home .dock { height: 70px; border-radius: 28px; }
 .mp-empty { margin: 28px 20px 0; text-align: center; color: #8a8a8e; font-size: 13px; transition: opacity .3s; }
 .app .item.add { max-height: 0; opacity: 0; padding: 0; border-bottom-width: 0; overflow: hidden; transition: max-height .4s, padding .4s, opacity .3s; }
 .app .item.add.in { max-height: 70px; opacity: 1; padding: 9px 0; border-bottom-width: 1px; }
@@ -286,26 +297,12 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .pbar i { display: block; height: 100%; width: 0; background: #0a84ff; }
 
 /* ---------- Sections ---------- */
-section { padding: 96px 0; border-top: 1px solid var(--rule); }
+section { padding: 96px 0; border-top: 1px solid var(--rule); scroll-margin-top: 30px; }
+#stage { scroll-margin-top: 50px; }
 .kicker { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 10px; letter-spacing: .01em; }
 h2 { font-size: clamp(28px, 3.6vw, 38px); line-height: 1.12; letter-spacing: -0.022em; margin: 0 0 16px; }
 .lead { font-size: 18px; color: var(--muted); max-width: 560px; margin: 0; }
 
-/* Install demo */
-.install { display: grid; grid-template-columns: 1fr 320px; gap: 64px; align-items: center; }
-@media (max-width: 820px) { .install { grid-template-columns: 1fr; } }
-.steps { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 4px; }
-.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--muted); transition: background .3s, color .3s; }
-.steps li b { color: var(--ink); font-weight: 600; display: block; }
-.steps li .num { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--rule); display: grid; place-items: center; font-size: 12px; font-weight: 600; margin-top: 2px; transition: all .3s; }
-.steps li.now { background: var(--code-bg); color: var(--ink); }
-.steps li.now .num { background: var(--blue); border-color: var(--blue); color: #fff; }
-
-.phone {
-  width: 300px; height: 620px; margin: 0 auto; border-radius: 52px; padding: 11px; background: #0e0e10;
-  box-shadow: 0 0 0 1.5px #3a3a3e inset, 0 30px 60px rgba(0,0,0,.18), 0 6px 16px rgba(0,0,0,.12);
-  position: relative;
-}
 .screen {
   position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden;
   background: #f2f2f7; color: #000; font-size: 14px;
@@ -418,7 +415,7 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   <a class="opt" href="https://github.com/syousif94/SelfStore">GitHub</a>
   <span class="spacer"></span>
   <span class="status">
-    <button class="extra on" id="extra" aria-label="SelfStore menu" aria-expanded="true">
+    <button class="extra hint" id="extra" aria-label="SelfStore menu" aria-haspopup="menu" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.6 2.2a1.5 1.5 0 0 0-1.2 0L4.3 5.4l7.7 3.4 7.7-3.4zM3.5 6.9v9.6c0 .6.35 1.1.9 1.4l6.85 3.1V10.3zm9.25 14.1 6.85-3.1c.55-.3.9-.8.9-1.4V6.9l-7.75 3.4z"/></svg>
     </button>
     <span class="extra opt" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 18.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm-4.2-2.3 1.5 1.5a3.9 3.9 0 0 1 5.4 0l1.5-1.5a6 6 0 0 0-8.4 0zm-3-3 1.5 1.5a8.1 8.1 0 0 1 11.4 0l1.5-1.5a10.2 10.2 0 0 0-14.4 0zM1.8 10.2l1.5 1.5a12.3 12.3 0 0 1 17.4 0l1.5-1.5a14.4 14.4 0 0 0-20.4 0z"/></svg></span>
@@ -439,44 +436,45 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
         </a>
         <a class="button plain" href="docs.html">Docs</a>
       </div>
-      <div class="fine"><span class="version">Free</span> · macOS 15 or later</div>
+      <div class="fine"><span class="version">Free</span> · macOS 15 or later · <button class="try" id="try">Try the menu ↗</button></div>
     </div>
   </div>
 
-  <div class="panel" id="panel" aria-label="The SelfStore menu">
+  <div class="panel closed" id="panel" role="menu" aria-label="The SelfStore menu (a preview)">
     <div class="head">
-      <div><b>SelfStore</b><small>studio-mac.example.ts.net</small></div>
-      <span class="switch" aria-hidden="true"></span>
+      <div><b>SelfStore</b><small id="share-state">studio-mac.example.ts.net</small></div>
+      <button class="switch" id="share" role="switch" aria-checked="true" aria-label="Share over Tailscale"></button>
     </div>
     <hr>
     <h6>Apps</h6>
-    <div class="row"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>1.4 (88)</span></div><span class="n">5</span></div>
-    <div class="row"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>2.1 (41)</span></div><span class="n">2</span></div>
-    <div class="row"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>3.0 (7)</span></div></div>
+    <div class="row"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>Added 2 hours ago</span></div><span class="n">1.4 (88)</span></div>
+    <div class="row"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>Added yesterday</span></div><span class="n">2.1 (41)</span></div>
+    <div class="row"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>Added 3 days ago</span></div><span class="n">3.0 (7)</span></div>
     <h6>Repos</h6>
     <div class="row"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></span><div class="t">acme/field-kit<span>Pulled 2 hours ago</span></div></div>
-    <h6 class="m-hide">Signing</h6>
-    <div class="row m-hide"><span class="glyph on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span><div class="t">Ad Hoc Signing<span>3 devices registered</span></div></div>
-    <div class="m-hide">
+    <h6>Signing</h6>
+    <div class="row"><span class="glyph on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span><div class="t">Ad Hoc Signing<span>3 devices registered</span></div></div>
+    <div class="cmds">
       <hr>
-      <div class="cmd">Open Store Page</div>
-      <div class="cmd">Copy iPhone App Install Link</div>
-      <div class="cmd">App Library</div>
-      <div class="cmd">Settings</div>
-      <div class="cmd">Quit</div>
+      <div class="cmd" data-go="#ways">Open Store Page</div>
+      <div class="cmd" data-copied>Copy iPhone App Install Link</div>
+      <div class="cmd" data-go="#stage">App Library</div>
+      <div class="cmd" data-go="#setup">Settings</div>
+      <div class="cmd" data-quit>Quit</div>
     </div>
   </div>
 
   <!-- Adding apps: drag files onto the App Library window, upload from the iPhone, add a git repo. -->
   <div class="wrap stage-wrap" id="stage">
     <ol class="addsteps" id="addsteps">
-      <li><b>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
+      <li class="now"><b>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
       <li><b>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
       <li><b>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
       <li><b>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
+      <li><b>Install on your iPhone</b><span>Straight from your Mac over Tailscale. No TestFlight.</span></li>
     </ol>
 
-    <div class="stage" role="img" aria-label="Animation: adding an .ipa, an Xcode project, an upload from the iPhone and a git repo to SelfStore">
+    <div class="stage" role="img" aria-label="Animation: adding an .ipa, an Xcode project, an upload from the iPhone and a git repo to SelfStore, then installing an app on the iPhone">
       <div class="deskwrap" id="deskwrap">
         <div class="desk" id="desk">
           <div class="file" id="f-ipa" style="top: 70px">
@@ -525,8 +523,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
       <div class="mphone">
         <div class="screen" id="mp-screen">
           <div class="island"></div>
-          <div class="sbar"><span>9:41</span><svg viewBox="0 0 46 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/><rect x="22" y="0.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="23.5" y="2" width="18" height="7" rx="1.8"/><rect x="44" y="3.5" width="1.6" height="4" rx=".8" opacity=".45"/></svg></div>
-          <div class="scene app">
+          <div class="sbar" id="mp-sbar"><span>9:41</span><svg viewBox="0 0 46 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/><rect x="22" y="0.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="23.5" y="2" width="18" height="7" rx="1.8"/><rect x="44" y="3.5" width="1.6" height="4" rx=".8" opacity=".45"/></svg></div>
+          <div class="scene app" id="mp-app">
             <div class="bar">
               <span class="circ"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
               <span class="circ" id="mp-plus"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
@@ -536,7 +534,7 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
             <div class="list">
               <div class="item add" id="mp-tally"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>Version 2.1 (41)</span></div><span class="pill">Install</span></div>
               <div class="item add" id="mp-pantry"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>Version 3.0 (7)</span></div><span class="pbtn building" id="mp-pantry-btn"><span class="bring"></span><span class="pill">Install</span></span></div>
-              <div class="item add" id="mp-trail"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>Version 1.4 (88)</span></div><span class="pill">Install</span></div>
+              <div class="item add" id="mp-trail"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>Version 1.4 (88)</span></div><span class="pill" id="mp-trail-btn">Install</span></div>
             </div>
             <div class="mp-h" id="mp-reposh">Repos</div>
             <div class="list">
@@ -547,6 +545,25 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
               <div>Add Git Repo<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></div>
               <div>Add Mac<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
             </div>
+            <div class="alert-off" id="mp-alert">
+              <div class="alert-dim"></div>
+              <div class="alert">
+                <p><b>Install “Trailhead”?</b>studio-mac.example.ts.net would like to install “Trailhead”.</p>
+                <div class="btns"><span>Cancel</span><span id="mp-alert-ok">Install</span></div>
+              </div>
+            </div>
+            <div class="home-bar"></div>
+          </div>
+          <div class="scene home hidden" id="mp-home">
+            <div class="grid">
+              <div class="ic"><div class="sq"><img src="images/apps/selfstore.png" alt=""></div>SelfStore</div>
+              <div class="ic"><div class="sq"><img src="images/apps/tally.png" alt=""></div>Tally</div>
+              <div class="ic"><div class="sq"><img src="images/apps/pantry.png" alt=""></div>Pantry</div>
+              <div class="ic new" id="mp-new"><div class="sq"><img src="images/apps/trailhead.png" alt=""><span class="pie" id="mp-pie"></span></div><span><span class="dot"></span><span id="mp-newlabel">Waiting…</span></span></div>
+              <div class="ic"><div class="blank"></div>&nbsp;</div>
+              <div class="ic"><div class="blank"></div>&nbsp;</div>
+            </div>
+            <div class="dock"><div class="blank"></div><div class="blank"></div><div class="blank"></div><div class="blank"></div></div>
             <div class="home-bar"></div>
           </div>
           <div class="pdim" id="mp-dim"></div>
@@ -564,65 +581,7 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   </div>
 </header>
 
-<section>
-  <div class="wrap install">
-    <div>
-      <p class="kicker">On your iPhone</p>
-      <h2>Tap Install. iOS does the rest.</h2>
-      <p class="lead">The SelfStore iPhone app lists the apps on all your Macs. Installs come straight from your Mac over Tailscale HTTPS. No TestFlight, no cable, no review.</p>
-      <ol class="steps" id="steps">
-        <li><span class="num">1</span><span><b>Pick a build</b>Every version is kept, with its release notes.</span></li>
-        <li><span class="num">2</span><span><b>Confirm</b>iOS asks once, then downloads it from your Mac.</span></li>
-        <li><span class="num">3</span><span><b>Open it</b>It's signed for your registered devices, so it just runs.</span></li>
-      </ol>
-    </div>
-
-    <div class="phone" role="img" aria-label="Animation: installing Trailhead from the SelfStore iPhone app">
-      <div class="screen">
-        <div class="island"></div>
-        <div class="sbar" id="sbar"><span>9:41</span><svg viewBox="0 0 46 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/><rect x="22" y="0.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="23.5" y="2" width="18" height="7" rx="1.8"/><rect x="44" y="3.5" width="1.6" height="4" rx=".8" opacity=".45"/></svg></div>
-
-        <div class="scene app" id="s-app">
-          <div class="bar">
-            <span class="circ"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
-            <span class="circ"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
-          </div>
-          <h3>SelfStore</h3>
-          <div class="list">
-            <div class="item"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>Version 1.4 (88)</span></div><span class="pill" id="btn">Install</span></div>
-            <div class="item"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>Version 2.1 (41)</span></div><span class="pill">Install</span></div>
-            <div class="item"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>Version 3.0 (7)</span></div><span class="pill">Install</span></div>
-          </div>
-          <div class="alert-off" id="alert">
-            <div class="alert-dim"></div>
-            <div class="alert">
-              <p><b>Install “Trailhead”?</b>studio-mac.example.ts.net would like to install “Trailhead”.</p>
-              <div class="btns"><span>Cancel</span><span id="alert-ok">Install</span></div>
-            </div>
-          </div>
-          <div class="home-bar"></div>
-        </div>
-
-        <div class="scene home hidden" id="s-home">
-          <div class="grid">
-            <div class="ic"><div class="sq"><img src="images/apps/selfstore.png" alt=""></div>SelfStore</div>
-            <div class="ic"><div class="sq"><img src="images/apps/tally.png" alt=""></div>Tally</div>
-            <div class="ic"><div class="sq"><img src="images/apps/pantry.png" alt=""></div>Pantry</div>
-            <div class="ic new" id="newapp"><div class="sq"><img src="images/apps/trailhead.png" alt=""><span class="pie" id="pie"></span></div><span><span class="dot"></span><span id="newlabel">Waiting…</span></span></div>
-            <div class="ic"><div class="blank"></div>&nbsp;</div>
-            <div class="ic"><div class="blank"></div>&nbsp;</div>
-          </div>
-          <div class="dock"><div class="blank"></div><div class="blank"></div><div class="blank"></div><div class="blank"></div></div>
-          <div class="home-bar"></div>
-        </div>
-
-        <span class="tap" id="tap"></span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
+<section id="ways">
   <div class="wrap">
     <p class="kicker">Adding apps</p>
     <h2>Three ways in.</h2>
@@ -675,7 +634,7 @@ curl -X POST \
   </div>
 </section>
 
-<section>
+<section id="setup">
   <div class="wrap">
     <p class="kicker">Setup</p>
     <h2>What you need.</h2>
@@ -709,25 +668,40 @@ curl -X POST \
   }
   tick(); setInterval(tick, 15000);
 
-  // ---- The dropdown hangs under the SelfStore menu bar item.
-  var extra = $('extra'), panel = $('panel'), desk = document.querySelector('.desktop');
+  // ---- The menu bar item opens a working copy of SelfStore's dropdown.
+  var extra = $('extra'), panel = $('panel');
   function place() {
     var r = extra.getBoundingClientRect(), w = panel.offsetWidth, vw = document.documentElement.clientWidth;
     panel.style.left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8) + 'px';
   }
   function setOpen(open) {
+    if (open) { place(); extra.classList.remove('hint'); }
     panel.classList.toggle('closed', !open);
     extra.classList.toggle('on', open);
     extra.setAttribute('aria-expanded', String(open));
   }
-  extra.addEventListener('click', function () {
-    if (scrollY > 60) { scrollTo({ top: 0, behavior: 'smooth' }); setOpen(true); return; }
-    setOpen(panel.classList.contains('closed'));
+  function isOpen() { return !panel.classList.contains('closed'); }
+  extra.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!isOpen()); });
+  $('try').addEventListener('click', function (e) { e.stopPropagation(); setOpen(true); });
+  document.addEventListener('click', function (e) { if (isOpen() && !panel.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  addEventListener('resize', place);
+  $('share').addEventListener('click', function () {
+    var on = this.classList.toggle('off') === false;
+    this.setAttribute('aria-checked', String(on));
+    $('share-state').textContent = on ? 'studio-mac.example.ts.net' : 'Not shared on your tailnet';
   });
-  addEventListener('resize', place); place();
-  new IntersectionObserver(function (e) {
-    extra.classList.toggle('on', e[0].isIntersecting && !panel.classList.contains('closed'));
-  }, { rootMargin: '-200px 0px 0px 0px' }).observe(desk);
+  panel.querySelectorAll('.cmd').forEach(function (c) {
+    c.addEventListener('click', function () {
+      if (c.hasAttribute('data-copied')) { c.classList.add('done'); setTimeout(function () { c.classList.remove('done'); setOpen(false); }, 900); return; }
+      setOpen(false);
+      var t = c.getAttribute('data-go');
+      if (t) document.querySelector(t).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  panel.querySelectorAll('.row').forEach(function (r) {
+    r.addEventListener('click', function () { setOpen(false); $('stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  });
 
   // ---- Download links follow latest.json, which scripts/deploy.sh writes for every release.
   fetch('latest.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
@@ -736,57 +710,6 @@ curl -X POST \
     document.querySelectorAll('.version').forEach(function (s) { s.textContent = 'Version ' + info.version + ' · free'; });
     document.querySelectorAll('.version-short').forEach(function (s) { s.textContent = info.version; });
   }).catch(function () {});
-
-  // ---- Install animation.
-  var app = $('s-app'), home = $('s-home'), alertEl = $('alert'), btn = $('btn'), tap = $('tap');
-  var steps = $('steps').children, newapp = $('newapp'), pie = $('pie'), label = $('newlabel'), sbar = $('sbar');
-  var screen = document.querySelector('.screen');
-  var timers = [];
-  function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
-  function step(i) { for (var k = 0; k < steps.length; k++) steps[k].classList.toggle('now', k === i); }
-  function tapOn(el) {
-    var s = screen.getBoundingClientRect(), r = el.getBoundingClientRect();
-    tap.style.left = (r.left - s.left + r.width / 2) + 'px';
-    tap.style.top = (r.top - s.top + r.height / 2) + 'px';
-    tap.classList.remove('go'); void tap.offsetWidth; tap.classList.add('go');
-  }
-  function showHome(on) {
-    app.classList.toggle('hidden', on); home.classList.toggle('hidden', !on);
-    sbar.style.color = on ? '#fff' : '#000';
-  }
-  function progress(from, to, ms) {
-    var t0 = performance.now();
-    (function f(now) {
-      var k = Math.min(1, (now - t0) / ms);
-      pie.style.setProperty('--p', from + (to - from) * k);
-      if (k < 1) requestAnimationFrame(f);
-    })(t0);
-  }
-  function run() {
-    timers.forEach(clearTimeout); timers = [];
-    showHome(false); alertEl.classList.add('alert-off');
-    newapp.className = 'ic new'; pie.style.setProperty('--p', 0); label.textContent = 'Waiting…'; step(0);
-    at(1400, function () { tapOn(btn); });
-    at(1700, function () { alertEl.classList.remove('alert-off'); step(1); });
-    at(3100, function () { tapOn($('alert-ok')); });
-    at(3350, function () { alertEl.classList.add('alert-off'); });
-    at(3800, function () { showHome(true); });
-    at(4300, function () { newapp.classList.add('in'); });
-    at(4900, function () { label.textContent = 'Loading…'; progress(0, .55, 1300); });
-    at(6300, function () { label.textContent = 'Installing…'; progress(.55, 1, 1000); });
-    at(7500, function () { newapp.classList.add('done'); label.textContent = 'Trailhead'; step(2); });
-    at(10500, run);
-  }
-
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    showHome(true); newapp.className = 'ic new in done'; label.textContent = 'Trailhead'; step(2);
-  } else {
-    var running = false;   // only animate while the phone is on screen
-    new IntersectionObserver(function (e) {
-      if (e[0].isIntersecting && !running) { running = true; run(); }
-      else if (!e[0].isIntersecting && running) { running = false; timers.forEach(clearTimeout); }
-    }, { threshold: 0.35 }).observe(document.querySelector('.phone'));
-  }
 
   // ---- Adding apps: a scaled Mac desk (files, cursor, App Library window) next to a small iPhone.
   var desk = $('desk'), deskwrap = $('deskwrap'), cur = $('cursor'), caps = $('addsteps').children;
@@ -805,7 +728,7 @@ curl -X POST \
     for (; el && el !== desk; el = el.offsetParent) { x += el.offsetLeft; y += el.offsetTop; }
     return { x: x, y: y };
   }
-  var home = { x: 330, y: 330 }, grab = {}, dragging = null;
+  var rest = { x: 330, y: 330 }, grab = {}, dragging = null;
   function move(p, ms) {
     cur.style.transitionDuration = ms + 'ms';
     cur.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)';
@@ -831,6 +754,18 @@ curl -X POST \
     mpTap.style.top = (r.top - s.top + r.height / 2) + 'px';
     mpTap.classList.remove('go'); void mpTap.offsetWidth; mpTap.classList.add('go');
   }
+  function showHome(on) {
+    cls('mp-app', 'hidden', on); cls('mp-home', 'hidden', !on);
+    $('mp-sbar').style.color = on ? '#fff' : '#000';
+  }
+  function pie(from, to, ms) {
+    var t0 = performance.now(), p = $('mp-pie');
+    (function f(now) {
+      var k = Math.min(1, (now - t0) / ms);
+      p.style.setProperty('--p', from + (to - from) * k);
+      if (k < 1 && st.length) requestAnimationFrame(f);
+    })(t0);
+  }
   function lift(file) { press(true); file.classList.add('lift'); dragging = file; }
   function drop(file) { press(false); cls('m-drop', 'on', false); file.classList.remove('lift'); file.classList.add('gone'); dragging = null; }
 
@@ -842,14 +777,15 @@ curl -X POST \
     dragging = null;
     [fIpa, fProj].forEach(function (f) { f.style.transform = ''; f.className = 'file'; });
     grab[fIpa.id] = pt(fIpa); grab[fProj.id] = pt(fProj);
-    press(false); move(home, 0);
+    press(false); move(rest, 0);
     document.querySelectorAll('#stage .add').forEach(function (r) { r.classList.remove('in', 'sel'); });
     ['m-drop', 'm-menu', 'm-sheet', 'm-plus', 'm-detail', 'mp-menu', 'mp-dim', 'mp-sheet', 'mp-reposh'].forEach(function (id) { cls(id, 'on', false); cls(id, 'in', false); });
     $('m-menu-repo').classList.remove('hi');
     $('m-empty').style.opacity = 1; $('m-fld').textContent = '';
     cls('mp-pantry-btn', 'building'); cls('mp-prog', 'hide'); cls('mp-done', 'hide');
     $('mp-bar').style.transition = 'none'; $('mp-bar').style.width = '0';
-    phoneList(); caption(-1);
+    phoneList(); caption(0);
+    showHome(false); cls('mp-alert', 'alert-off'); $('mp-new').className = 'ic new'; $('mp-pie').style.setProperty('--p', 0); $('mp-newlabel').textContent = 'Waiting…';
     void desk.offsetWidth; desk.classList.remove('snap');
   }
 
@@ -896,9 +832,20 @@ curl -X POST \
     });
     sat(20400, function () { move(pt($('m-add')), 600); });
     sat(21100, function () { press(true); });
-    sat(21250, function () { press(false); cls('m-sheet', 'on', false); cls('m-repo', 'in'); sub('m-repo-sub', 'Pulling…', true); move(home, 700); });
+    sat(21250, function () { press(false); cls('m-sheet', 'on', false); cls('m-repo', 'in'); sub('m-repo-sub', 'Pulling…', true); move(rest, 700); });
     sat(22800, function () { sub('m-repo-sub', 'Pulled just now'); cls('mp-reposh', 'in'); cls('mp-repo', 'in'); });
-    sat(26000, stage);
+    // 5. Install it on the iPhone.
+    sat(23800, function () { caption(4); });
+    sat(24400, function () { ptap($('mp-trail-btn')); });
+    sat(24700, function () { cls('mp-alert', 'alert-off', false); });
+    sat(26000, function () { ptap($('mp-alert-ok')); });
+    sat(26250, function () { cls('mp-alert', 'alert-off'); });
+    sat(26700, function () { showHome(true); });
+    sat(27200, function () { cls('mp-new', 'in'); });
+    sat(27800, function () { $('mp-newlabel').textContent = 'Loading…'; pie(0, .55, 1300); });
+    sat(29200, function () { $('mp-newlabel').textContent = 'Installing…'; pie(.55, 1, 1000); });
+    sat(30400, function () { cls('mp-new', 'done'); $('mp-newlabel').textContent = 'Trailhead'; });
+    sat(33500, stage);
   }
 
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {

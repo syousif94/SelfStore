@@ -113,14 +113,14 @@ private struct AppMenuRow: View {
         } subtitle: {
             if let b = building { b.lastBuild?.step ?? "Building…" }
             else if let e = builders.compactMap({ $0.lastBuild?.state == .failed ? $0.lastBuild?.error : nil }).first { e }
-            else { app.latest.displayVersion }
+            else { "Added \(app.latest.uploadedAt.formatted(.relative(presentation: .named)))" }
         } trailing: {
             if building != nil {
                 BuildingRing(size: 16, showsStop: false)
             } else if builders.contains(where: { $0.lastBuild?.state == .failed }) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
-            } else if app.versions.count > 1 {
-                Text("\(app.versions.count)").font(.system(size: 11)).foregroundStyle(.secondary)
+            } else {
+                Text(app.latest.displayVersion).font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
             }
         }
         .help(building != nil ? "Building…" : "Show in the Library")
