@@ -194,9 +194,7 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 @media (max-width: 860px) { .addsteps { grid-template-columns: 1fr; margin-bottom: 20px; } .addsteps li:not(.now) { display: none; } .addsteps { margin-top: 16px; } }
 .addsteps li { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--muted); transition: background .3s, box-shadow .3s; }
 .addsteps li b { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; margin-bottom: 3px; }
-.addsteps li b i { font-style: normal; display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid var(--rule); font-size: 11px; transition: all .3s; }
 .addsteps li.now { background: color-mix(in srgb, var(--page) 78%, transparent); box-shadow: 0 0 0 1px var(--rule); }
-.addsteps li.now b i { background: var(--blue); border-color: var(--blue); color: #fff; }
 
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) 270px; column-gap: 56px;
   grid-template-areas: "copy phone" "desk phone" "steps steps"; }
@@ -658,11 +656,11 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
       </div></div>
 
     <ol class="addsteps" id="addsteps">
-      <li class="now"><b><i>1</i>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
-      <li><b><i>2</i>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
-      <li><b><i>3</i>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
-      <li><b><i>4</i>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
-      <li><b><i>5</i>Install on your iPhone</b><span>Straight from your Mac over Tailscale. No TestFlight.</span></li>
+      <li class="now"><b>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
+      <li><b>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
+      <li><b>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
+      <li><b>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
+      <li><b>Install on your iPhone</b><span>Straight from your Mac over Tailscale. No TestFlight.</span></li>
     </ol>
   </div>
 </header>
