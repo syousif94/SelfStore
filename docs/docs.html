@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SelfStore Docs</title>
+<meta name="description" content="Reference for selfstore.yml and the SelfStore HTTP API.">
+<link rel="icon" href="images/favicon.png">
+<style>
+:root {
+  --page: #ffffff;
+  --ink: #1a1b25;
+  --muted: #5c5f6e;
+  --faint: #8b8e9c;
+  --rule: #e7e8ee;
+  --nav-bg: #fafafc;
+  --blue: #3d63dd;
+  --inline-code: #f2f3f7;
+  --code-bg: #1c1e2b;
+  --code-head: #262938;
+  --code-ink: #dfe2ee;
+  --code-faint: #8890aa;
+  --code-key: #8fb6ff;
+  --code-str: #9ad7a5;
+  --code-num: #f2b880;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #111218; --ink: #e8e9f0; --muted: #a2a5b4; --faint: #7a7d8c; --rule: #24262f;
+    --nav-bg: #14151c; --blue: #7d9bff; --inline-code: #1d1f28; --code-bg: #191b25; --code-head: #20232f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #111218; --ink: #e8e9f0; --muted: #a2a5b4; --faint: #7a7d8c; --rule: #24262f;
+  --nav-bg: #14151c; --blue: #7d9bff; --inline-code: #1d1f28; --code-bg: #191b25; --code-head: #20232f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.65 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+p code, li code, td code, .param code, h3 code { font-size: 13px; background: var(--inline-code); padding: 1px 5px; border-radius: 4px; }
+
+/* Top bar */
+.top {
+  position: sticky; top: 0; z-index: 10; height: 56px; display: flex; align-items: center; gap: 24px;
+  padding: 0 24px; background: color-mix(in srgb, var(--page) 90%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--rule);
+}
+.top .brand { display: flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 600; }
+.top .brand img { width: 24px; height: 24px; }
+.top .brand span { color: var(--faint); font-weight: 500; }
+.top nav { margin-left: auto; display: flex; gap: 20px; font-size: 14px; }
+.top nav a { color: var(--muted); }
+.top nav a:hover { color: var(--ink); text-decoration: none; }
+.menu-btn { display: none; margin-left: auto; background: none; border: 1px solid var(--rule); border-radius: 7px; height: 32px; padding: 0 10px; color: var(--ink); font: inherit; font-size: 14px; }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 248px 1fr; }
+.side {
+  position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto;
+  border-right: 1px solid var(--rule); background: var(--nav-bg); padding: 24px 12px 40px;
+}
+.side h5 { margin: 18px 12px 6px; font-size: 12px; font-weight: 600; color: var(--ink); }
+.side h5:first-child { margin-top: 0; }
+.side a { display: block; padding: 4px 12px; border-radius: 6px; color: var(--muted); font-size: 14px; }
+.side a:hover { color: var(--ink); text-decoration: none; }
+.side a.on { color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); font-weight: 500; }
+main { min-width: 0; }
+
+/* A section: prose on the left, code on the right. */
+.sec { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; padding: 56px 48px; border-bottom: 1px solid var(--rule); }
+.sec.intro { padding-top: 48px; }
+.sec .prose { max-width: 560px; }
+.sec .code { position: sticky; top: 80px; align-self: start; display: grid; gap: 16px; }
+h1 { font-size: 32px; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 12px; }
+h2 { font-size: 24px; letter-spacing: -0.015em; line-height: 1.25; margin: 0 0 12px; }
+h3 { font-size: 15px; margin: 28px 0 0; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.eyebrow { font-size: 13px; color: var(--faint); font-weight: 500; margin: 0 0 6px; }
+.prose p { color: var(--muted); margin: 0 0 14px; }
+.prose ul { color: var(--muted); padding-left: 20px; margin: 0 0 14px; }
+.prose li { margin: 4px 0; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.note { border-left: 3px solid var(--blue); background: var(--inline-code); padding: 10px 14px; border-radius: 0 8px 8px 0; color: var(--muted); font-size: 14px; margin: 18px 0; }
+.note.warn { border-color: #d9822b; }
+.note strong { color: var(--ink); }
+
+/* Parameter list */
+.params, .prose .params { margin: 0; padding: 0; list-style: none; }
+.param { padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.param .n { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 600; color: var(--ink); }
+.param .ty { font-size: 12px; color: var(--faint); margin-left: 8px; }
+.param .req { font-size: 11px; color: #d9822b; margin-left: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.param p { margin: 4px 0 0; font-size: 14px; }
+.param .n code, .param p code { font-weight: 400; }
+
+/* Code panels */
+.panel { background: var(--code-bg); border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 6px 20px rgba(20,22,40,.08); }
+.panel .ph { display: flex; justify-content: space-between; align-items: center; background: var(--code-head); color: var(--code-faint); font-size: 12px; font-weight: 600; padding: 9px 14px; letter-spacing: .02em; }
+.panel .ph button { background: none; border: 0; color: var(--code-faint); font: inherit; font-weight: 500; cursor: pointer; padding: 0; }
+.panel .ph button:hover { color: var(--code-ink); }
+.panel pre { margin: 0; padding: 14px 16px; color: var(--code-ink); font-size: 12.5px; line-height: 1.7; overflow-x: auto; }
+.panel .c { color: var(--code-faint); } .panel .k { color: var(--code-key); } .panel .s { color: var(--code-str); } .panel .n { color: var(--code-num); }
+.endpoints { list-style: none; margin: 0; padding: 10px 0; }
+.endpoints li { display: flex; gap: 10px; padding: 3px 16px; font: 12.5px/1.7 ui-monospace, "SF Mono", Menlo, monospace; color: var(--code-ink); }
+.endpoints a { color: var(--code-ink); }
+.m { display: inline-block; width: 52px; text-align: right; font-weight: 600; flex: none; }
+.m.get { color: #7fd1a6; } .m.post { color: #8fb6ff; } .m.patch { color: #f2b880; } .m.del { color: #ff8f8f; }
+.ep { display: inline-flex; align-items: center; gap: 8px; font: 13px ui-monospace, "SF Mono", Menlo, monospace; margin: 2px 0 12px; color: var(--ink); }
+.ep .m { width: auto; font-size: 11px; padding: 1px 6px; border-radius: 4px; color: #fff; }
+.ep .m.get { background: #2f9e6d; } .ep .m.post { background: #3d63dd; } .ep .m.patch { background: #c8741f; } .ep .m.del { background: #c94b4b; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 14px; }
+th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 12px; color: var(--faint); font-weight: 600; }
+td { color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .sec { grid-template-columns: 1fr; gap: 24px; padding: 40px 32px; }
+  .sec .code { position: static; }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .side { position: fixed; top: 56px; left: 0; right: 0; bottom: 0; z-index: 9; height: auto; display: none; border-right: 0; }
+  .side.open { display: block; }
+  .top nav { display: none; }
+  .menu-btn { display: block; }
+  .sec { padding: 32px 16px; }
+  .top { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="./"><img src="images/icon.png" alt="">SelfStore <span>Docs</span></a>
+  <nav>
+    <a href="./">Home</a>
+    <a class="dl-link" href="https://github.com/syousif94/SelfStore/releases/latest/download/SelfStore.dmg">Download</a>
+    <a href="https://github.com/syousif94/SelfStore">GitHub</a>
+  </nav>
+  <button class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="side">Contents</button>
+</header>
+
+<div class="layout">
+  <aside class="side" id="side">
+    <h5>selfstore.yml</h5>
+    <a href="#selfstore-yml">Overview</a>
+    <a href="#yml-fields">Fields</a>
+    <a href="#yml-ipa">Prebuilt .ipa files</a>
+    <a href="#yml-projects">Xcode projects</a>
+    <a href="#yml-branches">Branches</a>
+    <a href="#yml-export">Exporting builds</a>
+    <a href="#yml-add">Adding a repo</a>
+    <h5>HTTP API</h5>
+    <a href="#api">Introduction</a>
+    <a href="#auth">Authentication</a>
+    <a href="#errors">Errors</a>
+    <a href="#upload">Upload a build</a>
+    <a href="#apps">Apps and versions</a>
+    <a href="#projects">Projects</a>
+    <a href="#repos">Repos</a>
+    <a href="#signing">Signing and devices</a>
+    <a href="#testflight">TestFlight</a>
+  </aside>
+
+  <main>
+
+<!-- ===================== selfstore.yml ===================== -->
+
+    <section class="sec intro" id="selfstore-yml">
+      <div class="prose">
+        <p class="eyebrow">selfstore.yml</p>
+        <h1>Publish apps from a git repo</h1>
+        <p>A <code>selfstore.yml</code> at the root of a public git repo tells SelfStore which apps the repo publishes. Anyone running SelfStore can add the repo by its URL, and every app in it shows up in their library and on their iPhone.</p>
+        <p>Each app is one of two kinds:</p>
+        <ul>
+          <li><strong>A prebuilt <code>.ipa</code></strong> committed to the repo. SelfStore imports it and re-signs it for the user's devices. Nothing is built.</li>
+          <li><strong>An Xcode project and scheme.</strong> SelfStore builds it on the user's Mac, then signs and publishes it.</li>
+        </ul>
+        <p>A repo can mix both, list any number of apps, and publish from several branches.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>selfstore.yml</span><button data-copy>Copy</button></div>
+<pre><span class="k">version</span>: <span class="n">1</span>
+<span class="k">branches</span>: [main]
+
+<span class="k">apps</span>:
+  - <span class="k">name</span>: Notes
+    <span class="k">ipa</span>: selfstore/Notes.ipa
+
+  - <span class="k">name</span>: Widgets
+    <span class="k">project</span>: Widgets/Widgets.xcodeproj
+    <span class="k">scheme</span>: Widgets</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-fields">
+      <div class="prose">
+        <h2>Fields</h2>
+        <h3>Top level</h3>
+        <ul class="params">
+          <li class="param"><span class="n">apps</span><span class="ty">list</span><span class="req">required</span><p>The apps this repo publishes. At least one.</p></li>
+          <li class="param"><span class="n">branches</span><span class="ty">string or list</span><p>Branches to publish every app from, unless the app lists its own. Glob patterns such as <code>release/*</code> work. Defaults to the repo's default branch.</p></li>
+          <li class="param"><span class="n">version</span><span class="ty">integer</span><p>The format version. Currently <code>1</code>. Optional.</p></li>
+        </ul>
+        <h3>Each app</h3>
+        <ul class="params">
+          <li class="param"><span class="n">ipa</span><span class="ty">path</span><p>A prebuilt <code>.ipa</code>, relative to the repo root. Use either <code>ipa</code> or <code>project</code>, not both.</p></li>
+          <li class="param"><span class="n">project</span><span class="ty">path</span><p>An <code>.xcodeproj</code> or <code>.xcworkspace</code>, relative to the repo root.</p></li>
+          <li class="param"><span class="n">scheme</span><span class="ty">string</span><p>The scheme to build. Required with <code>project</code>.</p></li>
+          <li class="param"><span class="n">schemes</span><span class="ty">list</span><p>Several schemes from the same project. Each becomes its own app, named after its scheme.</p></li>
+          <li class="param"><span class="n">name</span><span class="ty">string</span><p>A label unique within the file. Defaults to the .ipa's file name or the scheme.</p></li>
+          <li class="param"><span class="n">configuration</span><span class="ty">string</span><p>The build configuration. Defaults to <code>Release</code>.</p></li>
+          <li class="param"><span class="n">platform</span><span class="ty">ios | macos</span><p>What the scheme builds. Detected when omitted.</p></li>
+          <li class="param"><span class="n">branches</span><span class="ty">string or list</span><p>Overrides the top-level <code>branches</code> for this app.</p></li>
+          <li class="param"><span class="n">notes</span><span class="ty">string</span><p>Shown with every version of this app, after the branch and commit.</p></li>
+        </ul>
+        <p style="margin-top:16px">Paths must stay inside the repo: absolute paths and <code>..</code> are rejected.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Every field</span><button data-copy>Copy</button></div>
+<pre><span class="k">version</span>: <span class="n">1</span>
+<span class="k">branches</span>: [main, <span class="s">"release/*"</span>]
+
+<span class="k">apps</span>:
+  <span class="c"># A prebuilt build in the repo</span>
+  - <span class="k">name</span>: Notes
+    <span class="k">ipa</span>: selfstore/Notes.ipa
+    <span class="k">notes</span>: Built by CI
+
+  <span class="c"># A project SelfStore builds</span>
+  - <span class="k">name</span>: Widgets
+    <span class="k">project</span>: Widgets/Widgets.xcworkspace
+    <span class="k">scheme</span>: Widgets
+    <span class="k">configuration</span>: Release
+    <span class="k">platform</span>: ios
+    <span class="k">branches</span>: [main, beta]
+
+  <span class="c"># Two apps from one project</span>
+  - <span class="k">project</span>: Suite/Suite.xcodeproj
+    <span class="k">schemes</span>: [Suite, SuiteMac]</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-ipa">
+      <div class="prose">
+        <h2>Prebuilt .ipa files</h2>
+        <p>Commit the .ipa and point an <code>ipa</code> entry at it. On every pull SelfStore compares the file with the last one it imported, and imports it again only when it changed. The newest five versions are kept.</p>
+        <p>The .ipa can be signed any way you like: development, ad hoc, or not at all. SelfStore re-signs it with the user's own certificate for their registered devices and keeps the entitlements their App ID allows.</p>
+        <p>Bundle IDs are rewritten to the user's prefix (Settings ▸ Bundle IDs). With a prefix of <code>com.you</code>, <code>com.acme.Notes</code> installs as <code>com.you.Notes</code>, and its extensions, app groups and iCloud containers move with it.</p>
+        <div class="note"><strong>Large files:</strong> .ipa files tracked with Git LFS work when <code>git-lfs</code> is installed on the Mac.</div>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>selfstore.yml</span><button data-copy>Copy</button></div>
+<pre><span class="k">apps</span>:
+  - <span class="k">name</span>: Notes
+    <span class="k">ipa</span>: selfstore/Notes.ipa
+  - <span class="k">name</span>: Notes Widget Lab
+    <span class="k">ipa</span>: builds/WidgetLab.ipa
+    <span class="k">branches</span>: [experiments]</pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Repo layout</span></div>
+<pre>.
+├── selfstore.yml
+├── selfstore/
+│   └── Notes.ipa
+└── builds/
+    └── WidgetLab.ipa</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-projects">
+      <div class="prose">
+        <h2>Xcode projects</h2>
+        <p>A <code>project</code> entry is built on the Mac of whoever added the repo. SelfStore builds without code signing, carries each target's entitlements over, signs the result for the user's devices and publishes it like an upload. Build numbers default to a UTC timestamp.</p>
+        <p>Projects build when someone chooses <strong>Pull &amp; Build</strong> (on the Mac, in the menu bar, or on the iPhone), or taps Build on the app. Pull &amp; Build only rebuilds apps whose branch has new commits.</p>
+        <p>Schemes that build a Mac app produce a <code>.dmg</code> and <code>.zip</code>, notarized when the Mac has a Developer ID certificate.</p>
+        <div class="note warn"><strong>Building runs the repo's code.</strong> Build phases and package plugins execute on the Mac. SelfStore runs git with hooks turned off, but only add repos you trust.</div>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>selfstore.yml</span><button data-copy>Copy</button></div>
+<pre><span class="k">apps</span>:
+  - <span class="k">name</span>: Trailhead
+    <span class="k">project</span>: apps/Trailhead/Trailhead.xcodeproj
+    <span class="k">scheme</span>: Trailhead
+
+  - <span class="k">name</span>: Trailhead for Mac
+    <span class="k">project</span>: apps/Trailhead/Trailhead.xcodeproj
+    <span class="k">scheme</span>: TrailheadMac
+    <span class="k">platform</span>: macos</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-branches">
+      <div class="prose">
+        <h2>Branches</h2>
+        <p>Every app is published from each branch it matches. Branches come from the app's own <code>branches</code>, then the top-level <code>branches</code>, then the repo's default branch.</p>
+        <p>Apps from branches other than the default get the branch name appended to their bundle ID, so they install next to the default branch instead of replacing it. Characters that aren't allowed in a bundle ID become hyphens.</p>
+        <p>SelfStore reads <code>selfstore.yml</code> from each branch, so a branch can add or remove apps. A branch without the file uses the default branch's.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>selfstore.yml</span><button data-copy>Copy</button></div>
+<pre><span class="k">branches</span>: [main, beta, <span class="s">"release/*"</span>]
+<span class="k">apps</span>:
+  - <span class="k">name</span>: Trailhead
+    <span class="k">project</span>: Trailhead.xcodeproj
+    <span class="k">scheme</span>: Trailhead</pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Installed bundle IDs</span></div>
+<pre><span class="c">main</span>           com.you.Trailhead
+<span class="c">beta</span>           com.you.Trailhead.beta
+<span class="c">release/2.0</span>    com.you.Trailhead.release-2-0</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-export">
+      <div class="prose">
+        <h2>Exporting builds</h2>
+        <p>If SelfStore already builds one of your projects, it can write the file for you. Open the project in the App Library and turn on <strong>Export the .ipa to the repo after each build</strong>.</p>
+        <p>After every iOS build SelfStore copies the .ipa to <code>selfstore/&lt;Scheme&gt;.ipa</code> in the project's git repo and adds a matching entry to <code>selfstore.yml</code>, keeping anything else in the file. Nothing is committed or pushed: commit both when you want to publish.</p>
+        <p>Over the API, send <code>PATCH /api/projects/&lt;id&gt;</code> with <code>{"exportToRepo": true}</code>.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>selfstore.yml (written by SelfStore)</span></div>
+<pre><span class="c"># SelfStore: apps this repo publishes. Format:</span>
+<span class="c"># https://syousif94.github.io/SelfStore/docs.html#selfstore-yml</span>
+<span class="k">version</span>: <span class="n">1</span>
+<span class="k">apps</span>:
+  - <span class="k">name</span>: Trailhead
+    <span class="k">ipa</span>: selfstore/Trailhead.ipa</pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Terminal</span><button data-copy>Copy</button></div>
+<pre>git add selfstore.yml selfstore/
+git commit -m <span class="s">"Publish Trailhead 1.4"</span>
+git push</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="yml-add">
+      <div class="prose">
+        <h2>Adding a repo</h2>
+        <p>Paste the repo's URL into <strong>Add Git Repo</strong> from the + menu in the App Library on the Mac, or in the SelfStore iPhone app. <code>owner/repo</code> works as shorthand for GitHub. The repo must be public and served over HTTPS.</p>
+        <p>SelfStore clones it, reads <code>selfstore.yml</code>, and checks out each published branch. Pull to pick up new commits; Pull &amp; Build also builds projects that changed.</p>
+        <p>From a script, use <a href="#repos">the repos API</a>.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl localhost:8765/api/repos \
+  -d <span class="s">'{"url": "acme/field-kit", "build": true}'</span></pre>
+        </div>
+      </div>
+    </section>
+
+<!-- ===================== HTTP API ===================== -->
+
+    <section class="sec intro" id="api">
+      <div class="prose">
+        <p class="eyebrow">HTTP API</p>
+        <h1>The SelfStore API</h1>
+        <p>Everything the apps do goes through a small HTTP API that SelfStore serves on the Mac. Build scripts and coding agents can use it to upload builds, start project builds and read the library.</p>
+        <table>
+          <tr><th>From</th><th>Base URL</th></tr>
+          <tr><td>The Mac itself</td><td><code>http://localhost:8765</code></td></tr>
+          <tr><td>Your tailnet</td><td><code>https://&lt;mac&gt;.&lt;tailnet&gt;.ts.net:8767</code></td></tr>
+        </table>
+        <p>Request and response bodies are JSON unless noted. Dates are ISO 8601. <code>GET /api/docs</code> returns this reference as Markdown for agents, and SelfStore ▸ Settings ▸ Copy Agent Instructions copies it.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl localhost:8765/api/info</pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Response</span></div>
+<pre>{
+  <span class="k">"service"</span>: <span class="s">"SelfStore"</span>,
+  <span class="k">"apiVersion"</span>: <span class="n">1</span>,
+  <span class="k">"name"</span>: <span class="s">"Studio Mac"</span>,
+  <span class="k">"lanURL"</span>: <span class="s">"http://studio-mac.local:8765"</span>,
+  <span class="k">"tailscaleURL"</span>: <span class="s">"https://studio-mac.example.ts.net:8767"</span>,
+  <span class="k">"installsAvailable"</span>: <span class="n">true</span>,
+  <span class="k">"appCount"</span>: <span class="n">3</span>,
+  <span class="k">"signingEnabled"</span>: <span class="n">true</span>,
+  <span class="k">"bundlePrefix"</span>: <span class="s">"com.you"</span>
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="auth">
+      <div class="prose">
+        <h2>Authentication</h2>
+        <p>Requests from the Mac itself (<code>localhost</code>) need no token.</p>
+        <p>Devices on your tailnet can, without a token, read the library and do what the iPhone app does: upload .ipa files, add and pull repos, start and cancel builds, and send builds to TestFlight.</p>
+        <p>Everything else from another machine (deleting, editing notes, adding projects, signing changes) needs the API token from SelfStore ▸ Settings, as a bearer token or a <code>token</code> query parameter.</p>
+        <div class="note"><strong>Keep the token private.</strong> It allows changing the library from anywhere that can reach the Mac.</div>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl -X DELETE \
+  -H <span class="s">"Authorization: Bearer $SELFSTORE_TOKEN"</span> \
+  https://studio-mac.example.ts.net:8767/api/apps/com.you.Notes/1.2-40</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="errors">
+      <div class="prose">
+        <h2>Errors</h2>
+        <p>Errors return a JSON body with a readable message and a conventional status code.</p>
+        <table>
+          <tr><th>Status</th><th>Meaning</th></tr>
+          <tr><td><code>400</code></td><td>The request is missing something, or a value is invalid.</td></tr>
+          <tr><td><code>401</code></td><td>The route needs the API token.</td></tr>
+          <tr><td><code>404</code></td><td>No such app, version, project or repo.</td></tr>
+          <tr><td><code>409</code></td><td>Conflicts with the current state, such as a version that already exists with <code>replace=false</code>.</td></tr>
+          <tr><td><code>422</code></td><td>The file or project couldn't be processed: not a valid .ipa, a signing failure, a build error.</td></tr>
+          <tr><td><code>500</code>, <code>502</code></td><td>Something failed on the Mac or at App Store Connect.</td></tr>
+        </table>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Response · 422</span></div>
+<pre>{
+  <span class="k">"error"</span>: <span class="s">"Not a valid .ipa: no Payload/*.app/Info.plist"</span>
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="upload">
+      <div class="prose">
+        <h2>Upload a build</h2>
+        <div class="ep"><span class="m post">POST</span>/api/apps</div>
+        <p>Send the .ipa as the raw request body, or as the <code>ipa</code> field of a <code>multipart/form-data</code> form. SelfStore reads the bundle ID, name, version, build and icon from it, re-signs it when signing is set up, and adds it as a new version. Every version is kept until you prune it.</p>
+        <h3>Query parameters</h3>
+        <ul class="params">
+          <li class="param"><span class="n">notes</span><span class="ty">string</span><p>Release notes shown on the iPhone. Also accepted as a form field.</p></li>
+          <li class="param"><span class="n">replace</span><span class="ty">boolean</span><p>Defaults to <code>true</code>. With <code>false</code>, uploading a version and build that already exist fails with 409.</p></li>
+          <li class="param"><span class="n">keep</span><span class="ty">integer</span><p>After uploading, keep only the newest <em>n</em> versions of the app.</p></li>
+          <li class="param"><span class="n">resign</span><span class="ty">boolean</span><p>Overrides the Mac's re-signing setting for this upload.</p></li>
+          <li class="param"><span class="n">rename</span><span class="ty">boolean</span><p>Overrides moving the app to the Mac's bundle ID prefix.</p></li>
+        </ul>
+        <h3>Returns</h3>
+        <p style="margin-top:10px"><code>201</code> with the new <a href="#apps">version</a>. Its <code>installURL</code> is an <code>itms-services://</code> link that installs the build on a registered device.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl --fail-with-body \
+  --data-binary @build/Trailhead.ipa \
+  <span class="s">"localhost:8765/api/apps?notes=Offline%20maps&amp;keep=10"</span></pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Response · 201</span></div>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"1.4-88"</span>,
+  <span class="k">"bundleId"</span>: <span class="s">"com.you.Trailhead"</span>,
+  <span class="k">"originalBundleId"</span>: <span class="s">"com.acme.Trailhead"</span>,
+  <span class="k">"name"</span>: <span class="s">"Trailhead"</span>,
+  <span class="k">"version"</span>: <span class="s">"1.4"</span>,
+  <span class="k">"build"</span>: <span class="s">"88"</span>,
+  <span class="k">"uploadedAt"</span>: <span class="s">"2026-11-21T18:02:11Z"</span>,
+  <span class="k">"size"</span>: <span class="n">918442</span>,
+  <span class="k">"notes"</span>: <span class="s">"Offline maps"</span>,
+  <span class="k">"source"</span>: <span class="s">"Upload"</span>,
+  <span class="k">"expiresAt"</span>: <span class="s">"2027-11-21T18:02:09Z"</span>,
+  <span class="k">"provisionedDevices"</span>: <span class="n">3</span>,
+  <span class="k">"iconPath"</span>: <span class="s">"/apps/com.you.Trailhead/1.4-88/icon.png"</span>,
+  <span class="k">"ipaPath"</span>: <span class="s">"/apps/com.you.Trailhead/1.4-88/app.ipa"</span>,
+  <span class="k">"manifestPath"</span>: <span class="s">"/apps/com.you.Trailhead/1.4-88/manifest.plist"</span>,
+  <span class="k">"installURL"</span>: <span class="s">"itms-services://?action=download-manifest&amp;url=…"</span>
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="apps">
+      <div class="prose">
+        <h2>Apps and versions</h2>
+        <p>An app is identified by its bundle ID, and holds its versions newest first. A version's id is <code>&lt;version&gt;-&lt;build&gt;</code>, for example <code>1.4-88</code>. Anywhere a version id is expected, <code>latest</code> works too.</p>
+        <h3>The version object</h3>
+        <ul class="params">
+          <li class="param"><span class="n">id</span><span class="ty">string</span><p><code>&lt;CFBundleShortVersionString&gt;-&lt;CFBundleVersion&gt;</code>.</p></li>
+          <li class="param"><span class="n">bundleId</span><span class="ty">string</span><p>The ID it installs as. <code>originalBundleId</code> is set when SelfStore moved it to the prefix.</p></li>
+          <li class="param"><span class="n">version</span>, <span class="n">build</span><span class="ty">string</span><p>From the app's Info.plist.</p></li>
+          <li class="param"><span class="n">notes</span><span class="ty">string</span><p>Release notes, if any.</p></li>
+          <li class="param"><span class="n">source</span><span class="ty">string</span><p>Where it came from: <code>Upload</code>, a project build, or <code>owner/repo branch @ commit</code>.</p></li>
+          <li class="param"><span class="n">expiresAt</span><span class="ty">date</span><p>When its provisioning profile expires.</p></li>
+          <li class="param"><span class="n">installURL</span><span class="ty">string</span><p>An <code>itms-services://</code> link, present when the Mac is shared over Tailscale.</p></li>
+          <li class="param"><span class="n">testFlight</span><span class="ty">object</span><p>The latest <a href="#testflight">TestFlight upload</a>, if any.</p></li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Endpoints</span></div>
+          <ul class="endpoints">
+            <li><span class="m get">GET</span>/api/apps</li>
+            <li><span class="m get">GET</span>/api/apps/:bundleId</li>
+            <li><span class="m get">GET</span>/api/apps/:bundleId/:version</li>
+            <li><span class="m patch">PATCH</span>/api/apps/:bundleId/:version</li>
+            <li><span class="m del">DELETE</span>/api/apps/:bundleId/:version</li>
+            <li><span class="m del">DELETE</span>/api/apps/:bundleId</li>
+            <li><span class="m post">POST</span>/api/apps/:bundleId/prune?keep=3</li>
+            <li><span class="m post">POST</span>/api/apps/:bundleId/:version/resign</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Edit release notes</span><button data-copy>Copy</button></div>
+<pre>curl -X PATCH localhost:8765/api/apps/com.you.Trailhead/latest \
+  -d <span class="s">'{"notes": "Offline maps and a new compass"}'</span></pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Keep the newest three</span><button data-copy>Copy</button></div>
+<pre>curl -X POST <span class="s">"localhost:8765/api/apps/com.you.Trailhead/prune?keep=3"</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="projects">
+      <div class="prose">
+        <h2>Projects</h2>
+        <p>Register an Xcode project once and build it on demand. A build archives without signing, signs for registered devices and publishes the result as a new version of its app. Mac schemes produce a <code>.dmg</code> and <code>.zip</code> instead.</p>
+        <h3>Add a project</h3>
+        <div class="ep" style="margin-top:12px"><span class="m post">POST</span>/api/projects</div>
+        <ul class="params">
+          <li class="param"><span class="n">path</span><span class="ty">string</span><span class="req">required</span><p>Absolute path to an <code>.xcodeproj</code> or <code>.xcworkspace</code> on the Mac.</p></li>
+          <li class="param"><span class="n">scheme</span><span class="ty">string</span><p>Defaults to the scheme named after the project, then one with “iOS” in its name, then the first.</p></li>
+          <li class="param"><span class="n">platform</span><span class="ty">ios | macos</span><p>Detected when omitted.</p></li>
+          <li class="param"><span class="n">build</span><span class="ty">boolean</span><p>Start a build right away.</p></li>
+        </ul>
+        <h3>Build state</h3>
+        <p style="margin-top:10px"><code>state</code> is <code>queued</code>, <code>building</code>, <code>signing</code>, <code>succeeded</code>, <code>failed</code> or <code>cancelled</code>, with a human-readable <code>step</code>, and <code>error</code> and <code>logTail</code> on failure. Mac builds add <code>artifacts</code> and <code>notarized</code>.</p>
+        <h3>Settings</h3>
+        <ul class="params">
+          <li class="param"><span class="n">exportToRepo</span><span class="ty">boolean</span><p>Write each build into the project's repo. See <a href="#yml-export">Exporting builds</a>.</p></li>
+          <li class="param"><span class="n">autoBuildNumber</span><span class="ty">boolean</span><p>Stamp builds with a UTC timestamp build number. On by default.</p></li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Endpoints</span></div>
+          <ul class="endpoints">
+            <li><span class="m post">POST</span>/api/projects</li>
+            <li><span class="m get">GET</span>/api/projects</li>
+            <li><span class="m get">GET</span>/api/projects/:id</li>
+            <li><span class="m patch">PATCH</span>/api/projects/:id</li>
+            <li><span class="m post">POST</span>/api/projects/:id/build</li>
+            <li><span class="m post">POST</span>/api/projects/:id/cancel</li>
+            <li><span class="m get">GET</span>/api/projects/:id/log</li>
+            <li><span class="m get">GET</span>/api/projects/:id/files/:name</li>
+            <li><span class="m del">DELETE</span>/api/projects/:id</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl localhost:8765/api/projects -d <span class="s">'{
+  "path": "/Users/me/Trailhead/Trailhead.xcodeproj",
+  "scheme": "Trailhead",
+  "build": true
+}'</span></pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Response · 201</span></div>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"trailhead-trailhead"</span>,
+  <span class="k">"name"</span>: <span class="s">"Trailhead"</span>,
+  <span class="k">"fileName"</span>: <span class="s">"Trailhead.xcodeproj"</span>,
+  <span class="k">"platform"</span>: <span class="s">"ios"</span>,
+  <span class="k">"state"</span>: <span class="s">"queued"</span>,
+  <span class="k">"step"</span>: <span class="s">"Waiting…"</span>,
+  <span class="k">"signingReady"</span>: <span class="n">true</span>
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="repos">
+      <div class="prose">
+        <h2>Repos</h2>
+        <p>Git repos with a <a href="#selfstore-yml"><code>selfstore.yml</code></a>. Each app the file lists becomes a <code>target</code>: prebuilt .ipa files are imported, and projects appear in <code>/api/projects</code> with <code>repoId</code>, <code>branch</code> and <code>commit</code>.</p>
+        <h3>Add a repo</h3>
+        <div class="ep" style="margin-top:12px"><span class="m post">POST</span>/api/repos</div>
+        <ul class="params">
+          <li class="param"><span class="n">url</span><span class="ty">string</span><span class="req">required</span><p>An HTTPS git URL, or <code>owner/repo</code> for GitHub.</p></li>
+          <li class="param"><span class="n">build</span><span class="ty">boolean</span><p>Build its projects after the first pull.</p></li>
+        </ul>
+        <h3>Pull</h3>
+        <div class="ep" style="margin-top:12px"><span class="m post">POST</span>/api/repos/:id/pull</div>
+        <ul class="params">
+          <li class="param"><span class="n">build</span><span class="ty">changed | all</span><p>After pulling, build projects with new commits (<code>changed</code>) or every project (<code>all</code>). Omit to only pull.</p></li>
+        </ul>
+        <p style="margin-top:14px">The repo's <code>state</code> is <code>idle</code>, <code>pulling</code> or <code>failed</code>. Poll <code>GET /api/repos/:id</code> for <code>step</code>, <code>branches</code> and each target's <code>error</code>.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Endpoints</span></div>
+          <ul class="endpoints">
+            <li><span class="m post">POST</span>/api/repos</li>
+            <li><span class="m get">GET</span>/api/repos</li>
+            <li><span class="m get">GET</span>/api/repos/:id</li>
+            <li><span class="m post">POST</span>/api/repos/:id/pull</li>
+            <li><span class="m post">POST</span>/api/repos/:id/build</li>
+            <li><span class="m del">DELETE</span>/api/repos/:id</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Pull and build what changed</span><button data-copy>Copy</button></div>
+<pre>curl -X POST <span class="s">"localhost:8765/api/repos/github.com-acme-field-kit/pull?build=changed"</span></pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Response · 202</span></div>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"github.com-acme-field-kit"</span>,
+  <span class="k">"name"</span>: <span class="s">"acme/field-kit"</span>,
+  <span class="k">"state"</span>: <span class="s">"pulling"</span>,
+  <span class="k">"step"</span>: <span class="s">"Fetching…"</span>,
+  <span class="k">"branches"</span>: [
+    { <span class="k">"name"</span>: <span class="s">"main"</span>, <span class="k">"commit"</span>: <span class="s">"a397873…"</span>, <span class="k">"subject"</span>: <span class="s">"Trail maps work offline"</span> }
+  ],
+  <span class="k">"targets"</span>: [
+    { <span class="k">"id"</span>: <span class="s">"main/Trailhead"</span>, <span class="k">"kind"</span>: <span class="s">"project"</span>,
+      <span class="k">"projectId"</span>: <span class="s">"…-main-trailhead"</span>, <span class="k">"bundleId"</span>: <span class="s">"com.you.Trailhead"</span> },
+    { <span class="k">"id"</span>: <span class="s">"main/Pantry"</span>, <span class="k">"kind"</span>: <span class="s">"ipa"</span>,
+      <span class="k">"path"</span>: <span class="s">"selfstore/Pantry.ipa"</span>, <span class="k">"bundleId"</span>: <span class="s">"com.you.Pantry"</span> }
+  ]
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="signing">
+      <div class="prose">
+        <h2>Signing and devices</h2>
+        <p>With an App Store Connect API key, SelfStore keeps an Apple Distribution certificate and an ad hoc profile containing every registered device, and re-signs each new build with them. Bundle IDs it hasn't seen are registered on the account automatically.</p>
+        <p>iPhones register themselves by opening <code>/register</code> on the Mac's Tailscale address in Safari. Registering a new device re-signs the latest version of every app so it includes the device.</p>
+        <p><code>GET /api/signing</code> reports <code>ready</code>, the certificate, and the registered devices. Entitlements a build asked for but its App ID doesn't allow are listed in the version's <code>signingWarnings</code>.</p>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Endpoints</span></div>
+          <ul class="endpoints">
+            <li><span class="m get">GET</span>/api/signing</li>
+            <li><span class="m post">POST</span>/api/signing/refresh</li>
+            <li><span class="m get">GET</span>/api/devices</li>
+            <li><span class="m post">POST</span>/api/devices</li>
+            <li><span class="m post">POST</span>/api/resign-all</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Register a device by UDID</span><button data-copy>Copy</button></div>
+<pre>curl localhost:8765/api/devices \
+  -d <span class="s">'{"udid": "00008140-001A2B3C4D5E", "name": "Test iPad"}'</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="testflight">
+      <div class="prose">
+        <h2>TestFlight</h2>
+        <div class="ep"><span class="m post">POST</span>/api/apps/:bundleId/:version/testflight</div>
+        <p>Re-signs a stored build for the App Store and uploads it to App Store Connect with the same API key. Returns <code>202</code>; poll the version for progress.</p>
+        <p>The version's <code>testFlight.state</code> moves through <code>queued</code>, <code>signing</code> and <code>uploading</code> to <code>succeeded</code> or <code>failed</code>.</p>
+        <ul>
+          <li>The app must already exist in App Store Connect.</li>
+          <li>Each upload needs a version and build number App Store Connect hasn't seen. Project builds use timestamps, so they always qualify.</li>
+          <li>Apple processes the build for a few minutes after <code>succeeded</code>.</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="panel">
+          <div class="ph"><span>Request</span><button data-copy>Copy</button></div>
+<pre>curl -X POST localhost:8765/api/apps/com.you.Trailhead/latest/testflight</pre>
+        </div>
+        <div class="panel">
+          <div class="ph"><span>Response · 202</span></div>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"1.4-88"</span>,
+  <span class="k">"testFlight"</span>: {
+    <span class="k">"state"</span>: <span class="s">"queued"</span>,
+    <span class="k">"step"</span>: <span class="s">"Waiting…"</span>,
+    <span class="k">"startedAt"</span>: <span class="s">"2026-11-21T18:10:04Z"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  // Copy buttons copy the code in their panel.
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pre = b.closest('.panel').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText).then(function () {
+        b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1200);
+      });
+    });
+  });
+
+  // Highlight the section in view.
+  var links = {}, current = null;
+  document.querySelectorAll('.side a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      if (current) current.classList.remove('on');
+      current = links[e.target.id] || null;
+      if (current) current.classList.add('on');
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+  document.querySelectorAll('.sec').forEach(function (s) { spy.observe(s); });
+
+  // Contents menu on small screens.
+  var btn = document.getElementById('menu-btn'), side = document.getElementById('side');
+  btn.addEventListener('click', function () {
+    var open = side.classList.toggle('open'); btn.setAttribute('aria-expanded', String(open));
+  });
+  side.addEventListener('click', function (e) { if (e.target.tagName === 'A') { side.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); } });
+
+  fetch('latest.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
+    if (info) document.querySelectorAll('.dl-link').forEach(function (a) { a.href = info.dmg; });
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

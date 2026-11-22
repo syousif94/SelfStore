@@ -469,7 +469,7 @@ final class RepoStore {
 
 enum SelfStoreLinks {
     static let repo = "https://github.com/syousif94/SelfStore"
-    static let ymlDocs = repo + "#selfstoreyml"
+    static let ymlDocs = "https://syousif94.github.io/SelfStore/docs.html#selfstore-yml"
 }
 
 // MARK: - git
