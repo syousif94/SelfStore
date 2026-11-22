@@ -26,6 +26,8 @@
   --wall-a: #c9d6f2;
   --wall-b: #e9dcf0;
   --wall-c: #f4e6d8;
+  --wp-0: #b8925f; --wp-1a: #7a5a3c; --wp-1b: #ecd7b2; --wp-2a: #6b5444; --wp-2b: #f4ede1; --wp-3a: #4a4560; --wp-3b: #bcbfcd; --wp-4a: #5e6f84; --wp-4b: #e0e4e7; --wp-5a: #8b9aa9; --wp-5b: #eff1f2;
+  --wp-edge: rgba(255,255,255,.9);
   --win: #ffffff; --win-side: #f0f0f2; --win-rule: rgba(0,0,0,.1); --win-sel: rgba(0,0,0,.07);
   color-scheme: light;
 }
@@ -36,6 +38,8 @@
     --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
     --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
     --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
+    --wp-0: #16141f; --wp-1a: #0d0c17; --wp-1b: #2f2d55; --wp-2a: #0e0d1a; --wp-2b: #3a3866; --wp-3a: #0b0b18; --wp-3b: #2a2d55; --wp-4a: #0e1124; --wp-4b: #34417a; --wp-5a: #141a33; --wp-5b: #5a6aa0;
+    --wp-edge: rgba(160,160,255,.7);
     --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
     color-scheme: dark;
   }
@@ -46,6 +50,8 @@
   --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
   --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
   --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
+    --wp-0: #16141f; --wp-1a: #0d0c17; --wp-1b: #2f2d55; --wp-2a: #0e0d1a; --wp-2b: #3a3866; --wp-3a: #0b0b18; --wp-3b: #2a2d55; --wp-4a: #0e1124; --wp-4b: #34417a; --wp-5a: #141a33; --wp-5b: #5a6aa0;
+    --wp-edge: rgba(160,160,255,.7);
     --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
   color-scheme: dark;
 }
@@ -91,14 +97,20 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 /* ---------- Hero / desktop ---------- */
 .desktop {
-  position: relative; overflow: hidden;
-  background:
-    radial-gradient(1200px 600px at 15% 0%, var(--wall-a), transparent 60%),
-    radial-gradient(900px 600px at 85% 20%, var(--wall-b), transparent 60%),
-    radial-gradient(900px 500px at 50% 110%, var(--wall-c), transparent 60%),
-    var(--page);
-  min-height: 600px; padding: 72px 0 80px;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column;
+  background: var(--wp-0);
+  min-height: 600px; padding: 72px 0 72px;
 }
+.desktop > .wrap { width: 100%; }
+/* An original wallpaper in the style of macOS 27: layered curved sheets with bright edges. */
+.wallpaper { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; }
+.wallpaper path { stroke: var(--wp-edge); stroke-width: 2.5; }
+/* A veil keeps the text readable and fades the desktop into the page. */
+.desktop::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 72%, var(--page) 100%),
+    radial-gradient(820px 560px at 22% 260px, color-mix(in srgb, var(--page) 84%, transparent), transparent 74%); }
 .hero-copy { max-width: 470px; }
 .hero-copy h1 {
   font-size: clamp(36px, 5.2vw, 54px); line-height: 1.06; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 700;
@@ -156,7 +168,10 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .panel .cmd:hover { background: var(--panel-hover); }
 
 @media (max-width: 860px) {
-  .desktop { padding-top: 40px; padding-bottom: 56px; }
+  .desktop { padding-top: 24px; padding-bottom: 56px; }
+  .desktop::before { background: linear-gradient(180deg, color-mix(in srgb, var(--page) 20%, transparent) 0%, color-mix(in srgb, var(--page) 62%, transparent) 50%, var(--page) 100%); }
+  /* The animation leads on phones, the text follows. */
+  .stage-wrap { order: -1; margin: 0 0 36px !important; }
   .panel { width: min(300px, calc(100vw - 16px)); }
   .hero-copy h1 { font-size: 34px; margin-bottom: 12px; }
   .hero-copy p { font-size: 16px; margin-bottom: 20px; }
@@ -164,15 +179,15 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 /* ---------- Adding apps (hero stage) ---------- */
 .stage-wrap { margin-top: 64px; }
-@media (max-width: 860px) { .stage-wrap { margin-top: 44px; } }
-.addsteps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; counter-reset: a; }
+.addsteps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.addsteps { margin: 32px 0 0; }
 /* Phones show just the step that is playing. */
-@media (max-width: 860px) { .addsteps { grid-template-columns: 1fr; margin-bottom: 20px; } .addsteps li:not(.now) { display: none; } }
-.addsteps li { counter-increment: a; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--muted); transition: background .3s, box-shadow .3s; }
+@media (max-width: 860px) { .addsteps { grid-template-columns: 1fr; margin-bottom: 20px; } .addsteps li:not(.now) { display: none; } .addsteps { margin-top: 16px; } }
+.addsteps li { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--muted); transition: background .3s, box-shadow .3s; }
 .addsteps li b { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; margin-bottom: 3px; }
-.addsteps li b::before { content: counter(a); display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid var(--rule); font-size: 11px; transition: all .3s; }
+.addsteps li b i { font-style: normal; display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid var(--rule); font-size: 11px; transition: all .3s; }
 .addsteps li.now { background: color-mix(in srgb, var(--page) 78%, transparent); box-shadow: 0 0 0 1px var(--rule); }
-.addsteps li.now b::before { background: var(--blue); border-color: var(--blue); color: #fff; }
+.addsteps li.now b i { background: var(--blue); border-color: var(--blue); color: #fff; }
 
 .stage { display: grid; grid-template-columns: 1fr 270px; gap: 48px; align-items: center; }
 @media (max-width: 860px) { .stage { grid-template-columns: 1fr; gap: 36px; } }
@@ -181,7 +196,7 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 .file { position: absolute; left: 6px; width: 84px; display: grid; justify-items: center; gap: 5px; font-size: 11px; text-align: center; z-index: 6; transition: transform .9s cubic-bezier(.45,0,.2,1), opacity .3s; }
 .file svg { width: 44px; height: 54px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.18)); transition: filter .2s, transform .2s; }
-.file span { padding: 1px 5px; border-radius: 4px; }
+.file span { padding: 1px 6px; border-radius: 4px; background: color-mix(in srgb, var(--page) 70%, transparent); }
 .file.lift svg { filter: drop-shadow(0 10px 16px rgba(0,0,0,.28)); transform: scale(1.08); }
 .file.lift span { background: var(--blue); color: #fff; }
 .file.gone { opacity: 0; }
@@ -250,6 +265,12 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .mphone { width: 270px; height: 560px; margin: 0 auto; border-radius: 48px; padding: 10px; background: #0e0e10; position: relative;
   box-shadow: 0 0 0 1.5px #3a3a3e inset, 0 30px 60px rgba(0,0,0,.18), 0 6px 16px rgba(0,0,0,.12); }
 .mphone .screen { border-radius: 39px; }
+/* Phones: a smaller iPhone, cropped to its top with a fade. */
+@media (max-width: 860px) {
+  .mpw { height: 250px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); }
+  .mphone { transform: scale(.58); transform-origin: top center; }
+  .stage { gap: 20px; }
+}
 .mphone .island { width: 80px; height: 24px; margin-left: -40px; }
 .mphone .sbar { padding: 6px 22px 0 30px; }
 .mphone .app h3 { font-size: 27px; }
@@ -425,6 +446,21 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
 </nav>
 
 <header class="desktop">
+  <svg class="wallpaper" viewBox="0 0 1440 1200" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="wp1" gradientUnits="userSpaceOnUse" x1="350" y1="420" x2="688" y2="591"><stop offset="0" style="stop-color: var(--wp-1a)"/><stop offset=".85" style="stop-color: var(--wp-1b)"/></linearGradient>
+      <linearGradient id="wp2" gradientUnits="userSpaceOnUse" x1="730" y1="420" x2="1068" y2="591"><stop offset="0" style="stop-color: var(--wp-2a)"/><stop offset=".85" style="stop-color: var(--wp-2b)"/></linearGradient>
+      <linearGradient id="wp3" gradientUnits="userSpaceOnUse" x1="1110" y1="420" x2="1448" y2="591"><stop offset="0" style="stop-color: var(--wp-3a)"/><stop offset=".85" style="stop-color: var(--wp-3b)"/></linearGradient>
+      <linearGradient id="wp4" gradientUnits="userSpaceOnUse" x1="1490" y1="420" x2="1828" y2="591"><stop offset="0" style="stop-color: var(--wp-4a)"/><stop offset=".85" style="stop-color: var(--wp-4b)"/></linearGradient>
+      <linearGradient id="wp5" gradientUnits="userSpaceOnUse" x1="1870" y1="420" x2="2208" y2="591"><stop offset="0" style="stop-color: var(--wp-5a)"/><stop offset=".85" style="stop-color: var(--wp-5b)"/></linearGradient>
+      <filter id="wps" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="-14" dy="8" stdDeviation="22" flood-color="#000" flood-opacity=".3"/></filter>
+    </defs>
+    <path d="M490 -20 C610 180 430 380 210 600 C30 780 -70 960 -130 1240 L2290 1240 L2290 -20 Z" fill="url(#wp1)" filter="url(#wps)"/>
+    <path d="M870 -20 C990 180 810 380 590 600 C410 780 310 960 250 1240 L2290 1240 L2290 -20 Z" fill="url(#wp2)" filter="url(#wps)"/>
+    <path d="M1250 -20 C1370 180 1190 380 970 600 C790 780 690 960 630 1240 L2290 1240 L2290 -20 Z" fill="url(#wp3)" filter="url(#wps)"/>
+    <path d="M1630 -20 C1750 180 1570 380 1350 600 C1170 780 1070 960 1010 1240 L2290 1240 L2290 -20 Z" fill="url(#wp4)" filter="url(#wps)"/>
+    <path d="M2010 -20 C2130 180 1950 380 1730 600 C1550 780 1450 960 1390 1240 L2290 1240 L2290 -20 Z" fill="url(#wp5)" filter="url(#wps)"/>
+  </svg>
   <div class="wrap">
     <div class="hero-copy">
       <h1>Your builds, on your iPhone, from your Mac.</h1>
@@ -466,14 +502,6 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
 
   <!-- Adding apps: drag files onto the App Library window, upload from the iPhone, add a git repo. -->
   <div class="wrap stage-wrap" id="stage">
-    <ol class="addsteps" id="addsteps">
-      <li class="now"><b>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
-      <li><b>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
-      <li><b>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
-      <li><b>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
-      <li><b>Install on your iPhone</b><span>Straight from your Mac over Tailscale. No TestFlight.</span></li>
-    </ol>
-
     <div class="stage" role="img" aria-label="Animation: adding an .ipa, an Xcode project, an upload from the iPhone and a git repo to SelfStore, then installing an app on the iPhone">
       <div class="deskwrap" id="deskwrap">
         <div class="desk" id="desk">
@@ -520,7 +548,7 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
         </div>
       </div>
 
-      <div class="mphone">
+      <div class="mpw"><div class="mphone">
         <div class="screen" id="mp-screen">
           <div class="island"></div>
           <div class="sbar" id="mp-sbar"><span>9:41</span><svg viewBox="0 0 46 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/><rect x="22" y="0.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="23.5" y="2" width="18" height="7" rx="1.8"/><rect x="44" y="3.5" width="1.6" height="4" rx=".8" opacity=".45"/></svg></div>
@@ -576,8 +604,16 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
           </div>
           <span class="tap" id="mp-tap"></span>
         </div>
-      </div>
+      </div></div>
     </div>
+
+    <ol class="addsteps" id="addsteps">
+      <li class="now"><b><i>1</i>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
+      <li><b><i>2</i>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
+      <li><b><i>3</i>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
+      <li><b><i>4</i>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
+      <li><b><i>5</i>Install on your iPhone</b><span>Straight from your Mac over Tailscale. No TestFlight.</span></li>
+    </ol>
   </div>
 </header>
 
@@ -749,9 +785,9 @@ curl -X POST \
   function phoneList() { $('mp-empty').style.opacity = mpScreen.querySelector('.item.add.in') ? 0 : 1; }
   function caption(i) { for (var k = 0; k < caps.length; k++) caps[k].classList.toggle('now', k === i); }
   function ptap(el) {
-    var s = mpScreen.getBoundingClientRect(), r = el.getBoundingClientRect();
-    mpTap.style.left = (r.left - s.left + r.width / 2) + 'px';
-    mpTap.style.top = (r.top - s.top + r.height / 2) + 'px';
+    var s = mpScreen.getBoundingClientRect(), r = el.getBoundingClientRect(), k = mpScreen.offsetWidth / s.width;
+    mpTap.style.left = (r.left - s.left + r.width / 2) * k + 'px';
+    mpTap.style.top = (r.top - s.top + r.height / 2) * k + 'px';
     mpTap.classList.remove('go'); void mpTap.offsetWidth; mpTap.classList.add('go');
   }
   function showHome(on) {
