@@ -26,6 +26,7 @@
   --wall-a: #c9d6f2;
   --wall-b: #e9dcf0;
   --wall-c: #f4e6d8;
+  --win: #ffffff; --win-side: #f0f0f2; --win-rule: rgba(0,0,0,.1); --win-sel: rgba(0,0,0,.07);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -35,6 +36,7 @@
     --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
     --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
     --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
+    --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
     color-scheme: dark;
   }
 }
@@ -44,6 +46,7 @@
   --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
   --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
   --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
+    --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
   color-scheme: dark;
 }
 
@@ -142,11 +145,145 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .panel .cmd { padding: 4px 9px; min-height: 22px; border-radius: 7px; }
 .panel .cmd:hover { background: var(--panel-hover); }
 
+/* On phones the menu still hangs from its menu bar item, trimmed, with the text right under it. */
 @media (max-width: 860px) {
-  .desktop { padding-top: 40px; }
-  .panel { position: relative; top: auto; left: auto !important; margin: 40px auto 0; }
-  .panel.closed { opacity: 1; transform: none; pointer-events: auto; }
+  .desktop { padding-top: 272px; padding-bottom: 56px; }
+  .panel { width: min(280px, calc(100vw - 16px)); }
+  .panel .m-hide { display: none; }
+  .hero-copy h1 { font-size: 34px; margin-bottom: 12px; }
+  .hero-copy p { font-size: 16px; margin-bottom: 20px; }
 }
+
+/* ---------- Adding apps (hero stage) ---------- */
+.stage-wrap { margin-top: 88px; }
+@media (max-width: 860px) { .stage-wrap { margin-top: 56px; } }
+.addsteps { list-style: none; margin: 0 0 32px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: a; }
+@media (max-width: 860px) { .addsteps { grid-template-columns: 1fr 1fr; margin-bottom: 24px; } }
+.addsteps li { counter-increment: a; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--muted); transition: background .3s, box-shadow .3s; }
+.addsteps li b { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; margin-bottom: 3px; }
+.addsteps li b::before { content: counter(a); display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid var(--rule); font-size: 11px; transition: all .3s; }
+.addsteps li.now { background: color-mix(in srgb, var(--page) 78%, transparent); box-shadow: 0 0 0 1px var(--rule); }
+.addsteps li.now b::before { background: var(--blue); border-color: var(--blue); color: #fff; }
+@media (max-width: 520px) { .addsteps li span { display: none; } .addsteps li b { margin: 0; font-size: 13px; } }
+
+.stage { display: grid; grid-template-columns: 1fr 270px; gap: 48px; align-items: center; }
+@media (max-width: 860px) { .stage { grid-template-columns: 1fr; gap: 36px; } }
+.deskwrap { position: relative; height: 380px; }
+.desk { position: absolute; left: 0; top: 0; width: 600px; height: 380px; transform-origin: 0 0; font-size: 12px; line-height: 1.25; color: var(--ink); }
+
+.file { position: absolute; left: 6px; width: 84px; display: grid; justify-items: center; gap: 5px; font-size: 11px; text-align: center; z-index: 6; transition: transform .9s cubic-bezier(.45,0,.2,1), opacity .3s; }
+.file svg { width: 44px; height: 54px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.18)); transition: filter .2s, transform .2s; }
+.file span { padding: 1px 5px; border-radius: 4px; }
+.file.lift svg { filter: drop-shadow(0 10px 16px rgba(0,0,0,.28)); transform: scale(1.08); }
+.file.lift span { background: var(--blue); color: #fff; }
+.file.gone { opacity: 0; }
+.cursor { position: absolute; left: 0; top: 0; width: 16px; height: 24px; z-index: 9; pointer-events: none; transition: transform .9s cubic-bezier(.45,0,.2,1); }
+.cursor svg { width: 16px; height: 24px; display: block; transform-origin: 2px 2px; transition: transform .1s; }
+.cursor.down svg { transform: scale(.86); }
+.desk.snap .file, .desk.snap .cursor { transition: none; }
+
+.win { position: absolute; left: 100px; top: 0; width: 500px; height: 380px; border-radius: 12px; overflow: hidden; background: var(--win);
+  box-shadow: 0 0 0 .5px var(--win-rule), 0 22px 50px rgba(0,0,0,.16), 0 4px 12px rgba(0,0,0,.07);
+  display: grid; grid-template-columns: 152px 1fr; grid-template-rows: 40px 1fr; }
+.win .lights { position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; }
+.win .lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.win .lights i + i { background: #febc2e; } .win .lights i + i + i { background: #28c840; }
+.win .side { grid-row: 1 / 3; background: var(--win-side); padding: 36px 8px 8px; border-right: 1px solid var(--win-rule); }
+.win .tbar { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 16px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--win-rule); }
+.win .tbtn { width: 28px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); transition: background .15s; }
+.win .tbtn.on { background: var(--win-sel); }
+.win .tbtn svg { width: 14px; height: 14px; }
+.side h6 { margin: 0; padding: 10px 6px 4px; font-size: 10.5px; font-weight: 600; color: var(--faint); }
+.mrow { display: flex; align-items: center; gap: 7px; padding: 0 6px; border-radius: 6px; max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s, padding .35s, opacity .3s, background .2s; }
+.mrow.in { max-height: 40px; padding-top: 4px; padding-bottom: 4px; opacity: 1; }
+.mrow.sel { background: var(--win-sel); }
+.mrow img, .mrow .rg { width: 22px; height: 22px; border-radius: 5px; flex: none; }
+.mrow .t { min-width: 0; font-weight: 500; }
+.mrow .t span { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+.rg { display: grid; place-items: center; background: linear-gradient(#ff9f0a, #ff375f); color: #fff; }
+.rg svg { width: 12px; height: 12px; }
+.spin { width: 9px; height: 9px; flex: none; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--blue) 22%, transparent); border-top-color: var(--blue); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+.win .main { position: relative; }
+.win .empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: var(--muted); font-size: 12px; transition: opacity .3s; }
+.win .empty svg { width: 34px; height: 34px; color: var(--faint); }
+.win .detail { position: absolute; inset: 0; padding: 22px; opacity: 0; transition: opacity .3s; }
+.win .detail.on { opacity: 1; }
+.win .detail .top { display: flex; gap: 14px; align-items: center; }
+.win .detail img { width: 60px; height: 60px; border-radius: 14px; }
+.win .detail b { display: block; font-size: 17px; }
+.win .detail .top span { color: var(--muted); font-size: 12px; }
+.win .detail .bars { margin-top: 22px; display: grid; gap: 9px; }
+.win .detail .bars i { height: 8px; border-radius: 4px; background: var(--win-sel); }
+.win .drop { position: absolute; inset: 6px; border-radius: 9px; border: 2.5px solid var(--blue); background: color-mix(in srgb, var(--blue) 8%, transparent); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.win .drop.on { opacity: 1; }
+.mmenu { position: absolute; top: 34px; right: 8px; width: 196px; z-index: 7; padding: 5px; border-radius: 8px; background: var(--panel);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 0 .5px var(--panel-rule), 0 10px 30px rgba(0,0,0,.18); opacity: 0; transform: scale(.97); transform-origin: top right; transition: opacity .15s, transform .15s; }
+.mmenu.on { opacity: 1; transform: none; }
+.mmenu div { padding: 4px 8px; border-radius: 5px; }
+.mmenu div.hi { background: var(--blue); color: #fff; }
+.msheet { position: absolute; left: 105px; top: 46px; width: 290px; z-index: 7; padding: 16px; border-radius: 12px; background: var(--win);
+  box-shadow: 0 0 0 .5px var(--win-rule), 0 16px 40px rgba(0,0,0,.22); opacity: 0; transform: translateY(-10px); transition: opacity .2s, transform .25s; }
+.msheet.on { opacity: 1; transform: none; }
+.msheet b { display: block; font-size: 13px; margin-bottom: 10px; }
+.msheet .fld { height: 26px; border: 1px solid var(--win-rule); border-radius: 6px; padding: 0 8px; display: flex; align-items: center; box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 30%, transparent); }
+.msheet .fld:empty::before { content: "https://github.com/owner/repo"; color: var(--faint); }
+.msheet .fld::after { content: ""; width: 1px; height: 14px; margin-left: 1px; background: var(--ink); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.msheet .chk { display: flex; align-items: center; gap: 6px; margin: 10px 0 14px; color: var(--muted); }
+.msheet .chk i { width: 13px; height: 13px; border-radius: 3px; background: var(--blue); display: grid; place-items: center; }
+.msheet .chk i::after { content: ""; width: 6px; height: 3px; border: solid #fff; border-width: 0 0 1.5px 1.5px; transform: rotate(-45deg) translate(1px, -1px); }
+.msheet .btns { display: flex; justify-content: flex-end; gap: 8px; }
+.msheet .btns span { padding: 3px 12px; border-radius: 6px; background: var(--win-sel); }
+.msheet .btns span.pri { background: var(--blue); color: #fff; }
+
+/* The small iPhone next to the Mac window */
+.mphone { width: 270px; height: 560px; margin: 0 auto; border-radius: 48px; padding: 10px; background: #0e0e10; position: relative;
+  box-shadow: 0 0 0 1.5px #3a3a3e inset, 0 30px 60px rgba(0,0,0,.18), 0 6px 16px rgba(0,0,0,.12); }
+.mphone .screen { border-radius: 39px; }
+.mphone .island { width: 80px; height: 24px; margin-left: -40px; }
+.mphone .sbar { padding: 6px 22px 0 30px; }
+.mphone .app h3 { font-size: 27px; }
+.mphone .app .list { margin: 0 12px; padding: 0 10px; }
+.mphone .app .item { gap: 9px; }
+.mphone .app .item img, .mphone .app .item .rg { width: 40px; height: 40px; border-radius: 10px; }
+.mphone .app .item .t { font-size: 13px; }
+.mphone .app .item .t span { font-size: 11px; white-space: nowrap; }
+.mphone .pill { min-width: 54px; padding: 0 10px; font-size: 12px; }
+.mp-empty { margin: 28px 20px 0; text-align: center; color: #8a8a8e; font-size: 13px; transition: opacity .3s; }
+.app .item.add { max-height: 0; opacity: 0; padding: 0; border-bottom-width: 0; overflow: hidden; transition: max-height .4s, padding .4s, opacity .3s; }
+.app .item.add.in { max-height: 70px; opacity: 1; padding: 9px 0; border-bottom-width: 1px; }
+.app .item.add.in:last-child { border-bottom-width: 0; }
+.mp-h { margin: 20px 28px 6px; font-size: 12px; color: #8a8a8e; text-transform: uppercase; opacity: 0; transition: opacity .3s; }
+.mp-h.in { opacity: 1; }
+.app .item .rg { width: 46px; height: 46px; border-radius: 11px; }
+.app .item .rg svg { width: 22px; height: 22px; }
+.pill.ghost { background: #e9e9ee; color: #0a84ff; }
+.pbtn .bring { display: none; width: 28px; height: 28px; position: relative; place-items: center; }
+.pbtn .bring::before { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(10,132,255,.18); border-top-color: #0a84ff; animation: spin .9s linear infinite; }
+.pbtn .bring::after { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #0a84ff; }
+.pbtn.building .bring { display: grid; } .pbtn.building .pill { display: none; }
+.pmenu { position: absolute; top: 92px; right: 14px; width: 190px; z-index: 12; border-radius: 14px; overflow: hidden; background: rgba(248,248,250,.97);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22); font-size: 14px; opacity: 0; transform: scale(.5); transform-origin: top right; transition: opacity .2s, transform .25s cubic-bezier(.3,1.2,.5,1); }
+.pmenu.on { opacity: 1; transform: none; }
+.pmenu div { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #e3e3e8; }
+.pmenu div:last-child { border-bottom: 0; }
+.pmenu svg { width: 16px; height: 16px; }
+.pdim { position: absolute; inset: 0; z-index: 12; background: rgba(0,0,0,.25); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.pdim.on { opacity: 1; }
+.psheet { position: absolute; left: 0; right: 0; bottom: 0; top: 58px; z-index: 13; padding: 0 14px; border-radius: 14px 14px 0 0; background: #f2f2f7;
+  transform: translateY(105%); transition: transform .45s cubic-bezier(.3,.9,.3,1); }
+.psheet.on { transform: none; }
+.psheet .nav { display: flex; justify-content: space-between; align-items: center; height: 52px; font-size: 14px; }
+.psheet .nav span { color: #0a84ff; }
+.psheet .nav .up { font-weight: 600; }
+.pgroup { background: #fff; border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+.pgroup svg { width: 18px; height: 18px; flex: none; }
+.pgroup.col { display: block; }
+.pgroup.hide { display: none; }
+.pbar { height: 4px; border-radius: 2px; background: #e3e3e8; overflow: hidden; margin-top: 8px; }
+.pbar i { display: block; height: 100%; width: 0; background: #0a84ff; }
 
 /* ---------- Sections ---------- */
 section { padding: 96px 0; border-top: 1px solid var(--rule); }
@@ -318,14 +455,112 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
     <div class="row"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>3.0 (7)</span></div></div>
     <h6>Repos</h6>
     <div class="row"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></span><div class="t">acme/field-kit<span>Pulled 2 hours ago</span></div></div>
-    <h6>Signing</h6>
-    <div class="row"><span class="glyph on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span><div class="t">Ad Hoc Signing<span>3 devices registered</span></div></div>
-    <hr>
-    <div class="cmd">Open Store Page</div>
-    <div class="cmd">Copy iPhone App Install Link</div>
-    <div class="cmd">App Library</div>
-    <div class="cmd">Settings</div>
-    <div class="cmd">Quit</div>
+    <h6 class="m-hide">Signing</h6>
+    <div class="row m-hide"><span class="glyph on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span><div class="t">Ad Hoc Signing<span>3 devices registered</span></div></div>
+    <div class="m-hide">
+      <hr>
+      <div class="cmd">Open Store Page</div>
+      <div class="cmd">Copy iPhone App Install Link</div>
+      <div class="cmd">App Library</div>
+      <div class="cmd">Settings</div>
+      <div class="cmd">Quit</div>
+    </div>
+  </div>
+
+  <!-- Adding apps: drag files onto the App Library window, upload from the iPhone, add a git repo. -->
+  <div class="wrap stage-wrap" id="stage">
+    <ol class="addsteps" id="addsteps">
+      <li><b>Drag in an .ipa</b><span>Name, version and icon come from the file.</span></li>
+      <li><b>Drop an Xcode project</b><span>SelfStore builds it and signs it for your devices.</span></li>
+      <li><b>Upload from your iPhone</b><span>Pick an .ipa in Files and send it to your Mac.</span></li>
+      <li><b>Add a git repo</b><span>Its selfstore.yml lists the apps to publish.</span></li>
+    </ol>
+
+    <div class="stage" role="img" aria-label="Animation: adding an .ipa, an Xcode project, an upload from the iPhone and a git repo to SelfStore">
+      <div class="deskwrap" id="deskwrap">
+        <div class="desk" id="desk">
+          <div class="file" id="f-ipa" style="top: 70px">
+            <svg viewBox="0 0 44 54"><path d="M4 1h25l14 14v35a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V4a3 3 0 0 1 3-3z" fill="#fff" stroke="#c7c7cc"/><path d="M29 1v11a3 3 0 0 0 3 3h11" fill="#ececf0" stroke="#c7c7cc"/><image href="images/apps/trailhead.png" x="10" y="19" width="24" height="24"/></svg>
+            <span>Trailhead.ipa</span>
+          </div>
+          <div class="file" id="f-proj" style="top: 200px">
+            <svg viewBox="0 0 44 54"><defs><linearGradient id="bp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f8df9"/><stop offset="1" stop-color="#1d5fd8"/></linearGradient></defs><path d="M4 1h25l14 14v35a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V4a3 3 0 0 1 3-3z" fill="url(#bp)"/><path d="M29 1v11a3 3 0 0 0 3 3h11z" fill="#9cc0ff"/><g stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M13 42l11-11"/></g><path d="M20 24l6-6 7 7-6 6z" fill="#fff"/></svg>
+            <span>Pantry.xcodeproj</span>
+          </div>
+
+          <div class="win">
+            <div class="lights"><i></i><i></i><i></i></div>
+            <div class="side">
+              <h6>Apps</h6>
+              <div class="mrow add" id="m-tally"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>2.1 (41)</span></div></div>
+              <div class="mrow add" id="m-pantry"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span id="m-pantry-sub"></span></div></div>
+              <div class="mrow add" id="m-trail"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span id="m-trail-sub"></span></div></div>
+              <h6>Repos</h6>
+              <div class="mrow add" id="m-repo"><span class="rg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></span><div class="t">field-kit<span id="m-repo-sub"></span></div></div>
+            </div>
+            <div class="tbar">App Library
+              <span class="tbtn" id="m-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </div>
+            <div class="main" id="m-main">
+              <div class="empty" id="m-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 13l2.5-8h11L20 13v6H4z"/><path d="M4 13h4.5a3.5 3.5 0 0 0 7 0H20"/></svg>Drop .ipa files or Xcode projects here</div>
+              <div class="detail" id="m-detail">
+                <div class="top"><img id="m-dimg" src="images/apps/trailhead.png" alt=""><div><b id="m-dname">Trailhead</b><span id="m-dsub"></span></div></div>
+                <div class="bars"><i style="width:90%"></i><i style="width:72%"></i><i style="width:84%"></i><i style="width:40%"></i></div>
+              </div>
+              <div class="drop" id="m-drop"></div>
+            </div>
+            <div class="mmenu" id="m-menu"><div>Add .ipa or Xcode Project…</div><div id="m-menu-repo">Add Git Repo…</div></div>
+            <div class="msheet" id="m-sheet">
+              <b>Add Git Repo</b>
+              <div class="fld" id="m-fld"></div>
+              <div class="chk"><i></i>Build its projects</div>
+              <div class="btns"><span>Cancel</span><span class="pri" id="m-add">Add</span></div>
+            </div>
+          </div>
+
+          <span class="cursor" id="cursor"><svg viewBox="0 0 16 24"><path d="M1.5 1.5v18l4.6-4.4 3.3 7.4 3-1.3-3.2-7.2h6.3z" fill="#000" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg></span>
+        </div>
+      </div>
+
+      <div class="mphone">
+        <div class="screen" id="mp-screen">
+          <div class="island"></div>
+          <div class="sbar"><span>9:41</span><svg viewBox="0 0 46 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/><rect x="22" y="0.5" width="21" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="23.5" y="2" width="18" height="7" rx="1.8"/><rect x="44" y="3.5" width="1.6" height="4" rx=".8" opacity=".45"/></svg></div>
+          <div class="scene app">
+            <div class="bar">
+              <span class="circ"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+              <span class="circ" id="mp-plus"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </div>
+            <h3>SelfStore</h3>
+            <p class="mp-empty" id="mp-empty">Apps on your Macs show up here.</p>
+            <div class="list">
+              <div class="item add" id="mp-tally"><img src="images/apps/tally.png" alt=""><div class="t">Tally<span>Version 2.1 (41)</span></div><span class="pill">Install</span></div>
+              <div class="item add" id="mp-pantry"><img src="images/apps/pantry.png" alt=""><div class="t">Pantry<span>Version 3.0 (7)</span></div><span class="pbtn building" id="mp-pantry-btn"><span class="bring"></span><span class="pill">Install</span></span></div>
+              <div class="item add" id="mp-trail"><img src="images/apps/trailhead.png" alt=""><div class="t">Trailhead<span>Version 1.4 (88)</span></div><span class="pill">Install</span></div>
+            </div>
+            <div class="mp-h" id="mp-reposh">Repos</div>
+            <div class="list">
+              <div class="item add" id="mp-repo"><span class="rg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></span><div class="t">field-kit<span>2 apps · main</span></div><span class="pill ghost">Pull</span></div>
+            </div>
+            <div class="pmenu" id="mp-menu">
+              <div id="mp-menu-up">Upload .ipa<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 14v5h14v-5"/></svg></div>
+              <div>Add Git Repo<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 3v6M6 21v-4"/></svg></div>
+              <div>Add Mac<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+            </div>
+            <div class="home-bar"></div>
+          </div>
+          <div class="pdim" id="mp-dim"></div>
+          <div class="psheet" id="mp-sheet">
+            <div class="nav"><span>Cancel</span><b>Upload .ipa</b><span class="up" id="mp-upload">Upload</span></div>
+            <div class="pgroup"><svg viewBox="0 0 24 24" fill="none" stroke="#8a8a8e" stroke-width="1.8" stroke-linejoin="round"><path d="M6 2.5h8l5 5V21.5H6z"/><path d="M14 2.5v5h5"/></svg>Tally.ipa</div>
+            <div class="pgroup">Mac<span style="margin-left:auto;color:#8a8a8e">Studio Mac</span></div>
+            <div class="pgroup col hide" id="mp-prog">Uploading…<div class="pbar"><i id="mp-bar"></i></div></div>
+            <div class="pgroup hide" id="mp-done"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#34c759"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Added Tally 2.1 (41)</div>
+          </div>
+          <span class="tap" id="mp-tap"></span>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -476,11 +711,9 @@ curl -X POST \
 
   // ---- The dropdown hangs under the SelfStore menu bar item.
   var extra = $('extra'), panel = $('panel'), desk = document.querySelector('.desktop');
-  var wide = function () { return innerWidth > 860; };
   function place() {
-    if (!wide()) { panel.style.left = ''; return; }
-    var r = extra.getBoundingClientRect();
-    panel.style.left = Math.min(Math.max(8, r.left + r.width / 2 - 150), innerWidth - 308) + 'px';
+    var r = extra.getBoundingClientRect(), w = panel.offsetWidth, vw = document.documentElement.clientWidth;
+    panel.style.left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8) + 'px';
   }
   function setOpen(open) {
     panel.classList.toggle('closed', !open);
@@ -493,7 +726,7 @@ curl -X POST \
   });
   addEventListener('resize', place); place();
   new IntersectionObserver(function (e) {
-    if (wide()) extra.classList.toggle('on', e[0].isIntersecting && !panel.classList.contains('closed'));
+    extra.classList.toggle('on', e[0].isIntersecting && !panel.classList.contains('closed'));
   }, { rootMargin: '-200px 0px 0px 0px' }).observe(desk);
 
   // ---- Download links follow latest.json, which scripts/deploy.sh writes for every release.
@@ -553,6 +786,135 @@ curl -X POST \
       if (e[0].isIntersecting && !running) { running = true; run(); }
       else if (!e[0].isIntersecting && running) { running = false; timers.forEach(clearTimeout); }
     }, { threshold: 0.35 }).observe(document.querySelector('.phone'));
+  }
+
+  // ---- Adding apps: a scaled Mac desk (files, cursor, App Library window) next to a small iPhone.
+  var desk = $('desk'), deskwrap = $('deskwrap'), cur = $('cursor'), caps = $('addsteps').children;
+  var fIpa = $('f-ipa'), fProj = $('f-proj'), mpScreen = $('mp-screen'), mpTap = $('mp-tap');
+  function fit() {
+    var w = deskwrap.clientWidth, s = Math.min(1, w / 600);
+    desk.style.transform = 'scale(' + s + ')';
+    desk.style.left = Math.max(0, (w - 600 * s) / 2) + 'px';
+    deskwrap.style.height = 380 * s + 'px';
+  }
+  addEventListener('resize', fit); fit();
+
+  // Centre of an element in the desk's own (unscaled) coordinates.
+  function pt(el) {
+    var x = el.offsetWidth / 2, y = el.offsetHeight / 2;
+    for (; el && el !== desk; el = el.offsetParent) { x += el.offsetLeft; y += el.offsetTop; }
+    return { x: x, y: y };
+  }
+  var home = { x: 330, y: 330 }, grab = {}, dragging = null;
+  function move(p, ms) {
+    cur.style.transitionDuration = ms + 'ms';
+    cur.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)';
+    if (dragging) {
+      var o = grab[dragging.id];
+      dragging.style.transitionDuration = ms + 'ms, 300ms';
+      dragging.style.transform = 'translate(' + (p.x - o.x) + 'px,' + (p.y - o.y) + 'px)';
+    }
+  }
+  function press(on) { cur.classList.toggle('down', on); }
+  function cls(id, name, on) { $(id).classList.toggle(name, on !== false); }
+  function sub(id, text, busy) { $(id).innerHTML = (busy ? '<i class="spin"></i>' : '') + text; }
+  function select(id) { ['m-trail', 'm-pantry', 'm-tally'].forEach(function (k) { cls(k, 'sel', k === id); }); }
+  function detail(img, name, text) {
+    $('m-empty').style.opacity = 0; cls('m-detail', 'on');
+    $('m-dimg').src = 'images/apps/' + img + '.png'; $('m-dname').textContent = name; $('m-dsub').textContent = text;
+  }
+  function phoneList() { $('mp-empty').style.opacity = mpScreen.querySelector('.item.add.in') ? 0 : 1; }
+  function caption(i) { for (var k = 0; k < caps.length; k++) caps[k].classList.toggle('now', k === i); }
+  function ptap(el) {
+    var s = mpScreen.getBoundingClientRect(), r = el.getBoundingClientRect();
+    mpTap.style.left = (r.left - s.left + r.width / 2) + 'px';
+    mpTap.style.top = (r.top - s.top + r.height / 2) + 'px';
+    mpTap.classList.remove('go'); void mpTap.offsetWidth; mpTap.classList.add('go');
+  }
+  function lift(file) { press(true); file.classList.add('lift'); dragging = file; }
+  function drop(file) { press(false); cls('m-drop', 'on', false); file.classList.remove('lift'); file.classList.add('gone'); dragging = null; }
+
+  var st = [];
+  function sat(ms, fn) { st.push(setTimeout(fn, ms)); }
+  function reset() {
+    st.forEach(clearTimeout); st = [];
+    desk.classList.add('snap');
+    dragging = null;
+    [fIpa, fProj].forEach(function (f) { f.style.transform = ''; f.className = 'file'; });
+    grab[fIpa.id] = pt(fIpa); grab[fProj.id] = pt(fProj);
+    press(false); move(home, 0);
+    document.querySelectorAll('#stage .add').forEach(function (r) { r.classList.remove('in', 'sel'); });
+    ['m-drop', 'm-menu', 'm-sheet', 'm-plus', 'm-detail', 'mp-menu', 'mp-dim', 'mp-sheet', 'mp-reposh'].forEach(function (id) { cls(id, 'on', false); cls(id, 'in', false); });
+    $('m-menu-repo').classList.remove('hi');
+    $('m-empty').style.opacity = 1; $('m-fld').textContent = '';
+    cls('mp-pantry-btn', 'building'); cls('mp-prog', 'hide'); cls('mp-done', 'hide');
+    $('mp-bar').style.transition = 'none'; $('mp-bar').style.width = '0';
+    phoneList(); caption(-1);
+    void desk.offsetWidth; desk.classList.remove('snap');
+  }
+
+  function stage() {
+    reset();
+    // 1. Drag an .ipa onto the window.
+    sat(300, function () { caption(0); move(pt(fIpa), 800); });
+    sat(1300, function () { lift(fIpa); });
+    sat(1500, function () { move(pt($('m-main')), 1000); });
+    sat(2100, function () { cls('m-drop', 'on'); });
+    sat(2600, function () { drop(fIpa); cls('m-trail', 'in'); select('m-trail'); sub('m-trail-sub', 'Importing…', true); });
+    sat(3300, function () { sub('m-trail-sub', '1.4 (88)'); detail('trailhead', 'Trailhead', 'Version 1.4 (88)'); cls('mp-trail', 'in'); phoneList(); });
+    // 2. Drop an Xcode project; it builds, then shows up everywhere.
+    sat(4300, function () { caption(1); move(pt(fProj), 900); });
+    sat(5300, function () { lift(fProj); });
+    sat(5500, function () { move(pt($('m-main')), 1000); });
+    sat(6100, function () { cls('m-drop', 'on'); });
+    sat(6600, function () {
+      drop(fProj); cls('m-pantry', 'in'); select('m-pantry'); sub('m-pantry-sub', 'Building…', true);
+      detail('pantry', 'Pantry', 'Building…'); cls('mp-pantry', 'in'); phoneList();
+    });
+    sat(7900, function () { sub('m-pantry-sub', 'Signing…', true); $('m-dsub').textContent = 'Signing…'; });
+    sat(8900, function () { sub('m-pantry-sub', '3.0 (7)'); $('m-dsub').textContent = 'Version 3.0 (7)'; cls('mp-pantry-btn', 'building', false); });
+    // 3. Upload an .ipa from the iPhone.
+    sat(9700, function () { caption(2); move({ x: 440, y: 340 }, 700); });
+    sat(10100, function () { ptap($('mp-plus')); });
+    sat(10300, function () { cls('mp-menu', 'on'); });
+    sat(11100, function () { ptap($('mp-menu-up')); });
+    sat(11300, function () { cls('mp-menu', 'on', false); cls('mp-dim', 'on'); cls('mp-sheet', 'on'); });
+    sat(12300, function () { ptap($('mp-upload')); });
+    sat(12500, function () { cls('mp-prog', 'hide', false); var b = $('mp-bar'); b.style.transition = 'width 1.4s linear'; b.style.width = '100%'; });
+    sat(14000, function () { cls('mp-prog', 'hide'); cls('mp-done', 'hide', false); });
+    sat(15000, function () { cls('mp-dim', 'on', false); cls('mp-sheet', 'on', false); });
+    sat(15400, function () { cls('mp-tally', 'in'); cls('m-tally', 'in'); select('m-tally'); detail('tally', 'Tally', 'Version 2.1 (41)'); });
+    // 4. Add a git repo from the Mac.
+    sat(16400, function () { caption(3); move(pt($('m-plus')), 900); });
+    sat(17400, function () { press(true); });
+    sat(17550, function () { press(false); cls('m-plus', 'on'); cls('m-menu', 'on'); });
+    sat(17900, function () { move(pt($('m-menu-repo')), 500); });
+    sat(18400, function () { $('m-menu-repo').classList.add('hi'); press(true); });
+    sat(18550, function () { press(false); cls('m-menu', 'on', false); cls('m-plus', 'on', false); cls('m-sheet', 'on'); });
+    'acme/field-kit'.split('').forEach(function (c, i) {
+      sat(19100 + i * 75, function () { $('m-fld').textContent += c; });
+    });
+    sat(20400, function () { move(pt($('m-add')), 600); });
+    sat(21100, function () { press(true); });
+    sat(21250, function () { press(false); cls('m-sheet', 'on', false); cls('m-repo', 'in'); sub('m-repo-sub', 'Pulling…', true); move(home, 700); });
+    sat(22800, function () { sub('m-repo-sub', 'Pulled just now'); cls('mp-reposh', 'in'); cls('mp-repo', 'in'); });
+    sat(26000, stage);
+  }
+
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    reset();
+    document.querySelectorAll('#stage .add').forEach(function (r) { r.classList.add('in'); });
+    [fIpa, fProj].forEach(function (f) { f.classList.add('gone'); });
+    cur.style.display = 'none';
+    sub('m-trail-sub', '1.4 (88)'); sub('m-pantry-sub', '3.0 (7)'); sub('m-repo-sub', 'Pulled just now');
+    select('m-tally'); detail('tally', 'Tally', 'Version 2.1 (41)');
+    cls('mp-pantry-btn', 'building', false); cls('mp-reposh', 'in'); phoneList();
+  } else {
+    var staging = false;
+    new IntersectionObserver(function (e) {
+      if (e[0].isIntersecting && !staging) { staging = true; stage(); }
+      else if (!e[0].isIntersecting && staging) { staging = false; st.forEach(clearTimeout); }
+    }, { threshold: 0.3 }).observe(document.querySelector('.stage'));
   }
 })();
 </script>
