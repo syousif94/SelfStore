@@ -123,6 +123,7 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
     radial-gradient(820px 560px at 22% 260px, color-mix(in srgb, var(--page) var(--veil), transparent), transparent 74%); }
 .hero-copy { max-width: 470px; }
 .hero-copy h1 {
+  text-wrap: balance;
   font-size: clamp(36px, 5.2vw, 54px); line-height: 1.06; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 700;
 }
 .hero-copy p { font-size: 19px; line-height: 1.5; color: color-mix(in srgb, var(--ink) 76%, transparent); margin: 0 0 28px; }
@@ -210,6 +211,13 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .hero .addsteps { margin: 24px 0 0 !important; }
   .hero .deskwrap { margin: 20px 0 0; }
   .hero .mpw { position: relative; z-index: 2; margin-top: -48px; }
+}
+/* Medium widths (tablets, a Duo's inner screen in portrait): the whole iPhone sits in front of the window. */
+@media (min-width: 561px) and (max-width: 860px) {
+  .hero { grid-template-columns: minmax(0, 1fr) 140px; column-gap: 0; grid-template-areas: "copy copy" "steps steps" "desk phone"; }
+  .hero .deskwrap { margin: 24px 0 0; }
+  .hero .mpw { height: 420px; width: 203px; margin: 24px 0 0 -63px; align-self: center; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .hero .mpw .mphone { transform: scale(.75); transform-origin: top left; margin: 0; }
 }
 .deskwrap { position: relative; height: 380px; }
 .desk { position: absolute; left: 0; top: 0; width: 600px; height: 380px; transform-origin: 0 0; font-size: 12px; line-height: 1.25; color: var(--ink); }
@@ -434,14 +442,12 @@ a.snip-link:hover pre.snip { border-color: var(--blue); }
 :root[data-theme="dark"] .k { color: #f0a070; } :root[data-theme="dark"] .s { color: #7fd1a6; }
 
 /* Setup */
-.setup { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 36px; margin-top: 40px; counter-reset: s; }
+.setup { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 36px; margin-top: 40px; }
 .setup .opt-tag { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule); border-radius: 5px; padding: 1px 6px; margin-left: 4px; vertical-align: 2px; }
 .setup p b { color: var(--ink); font-weight: 600; }
 .lead a { color: var(--blue); text-decoration: none; }
 @media (max-width: 860px) { .setup { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .setup { grid-template-columns: 1fr; } }
-.setup div { counter-increment: s; }
-.setup div::before { content: counter(s); display: block; font-size: 13px; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
 .setup h4 { margin: 0 0 6px; font-size: 16px; }
 .setup p { margin: 0; color: var(--muted); font-size: 15px; }
 .setup code { font-size: 13px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
@@ -591,8 +597,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
       </div>
 
       <script>(function () { var w = document.getElementById('deskwrap'), d = document.getElementById('desk'), st = innerWidth <= 860, W = st ? 500 : 600, H = st ? 470 : 380;
-        if (st) d.classList.add('stacked'); var s = Math.min(1, w.clientWidth / W);
-        d.style.transform = 'scale(' + s + ')'; d.style.left = st ? (w.clientWidth - W * s) / 2 + 'px' : '0'; w.style.height = H * s + 'px'; })();</script>
+        if (st) d.classList.add('stacked'); var md = st && innerWidth > 560, s = Math.min(md ? 1.15 : 1, w.clientWidth / W);
+        d.style.transform = 'scale(' + s + ')'; d.style.left = !st ? '0' : (md ? w.clientWidth - W * s : (w.clientWidth - W * s) / 2) + 'px'; w.style.height = H * s + 'px'; })();</script>
       <div class="mpw"><div class="mphone">
         <div class="screen" id="mp-screen">
           <div class="island"></div>
@@ -817,9 +823,10 @@ curl -X POST \
   function fit() {
     var stacked = innerWidth <= 860, W = stacked ? 500 : 600, H = stacked ? 470 : 380;
     desk.classList.toggle('stacked', stacked);
-    var w = deskwrap.clientWidth, s = Math.min(1, w / W);
+    // Medium widths put the window against the iPhone on its right, a little larger.
+    var medium = stacked && innerWidth > 560, w = deskwrap.clientWidth, s = Math.min(medium ? 1.15 : 1, w / W);
     desk.style.transform = 'scale(' + s + ')';
-    desk.style.left = stacked ? Math.max(0, (w - W * s) / 2) + 'px' : '0';
+    desk.style.left = !stacked ? '0' : Math.max(0, medium ? w - W * s : (w - W * s) / 2) + 'px';
     deskwrap.style.height = H * s + 'px';
   }
   addEventListener('resize', fit); fit();
