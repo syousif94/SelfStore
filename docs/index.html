@@ -194,8 +194,10 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .hero .addsteps { grid-area: steps; }
 @media (min-width: 861px) { .hero-copy h1 { font-size: clamp(38px, 4.4vw, 48px); } .desktop { padding-top: 56px; } }
 @media (max-width: 860px) {
-  .hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "desk" "phone" "steps"; }
-  .hero .deskwrap { margin: 40px 0 20px; }
+  /* Phones: the playing step sits between the text and the animation, above the fold. */
+  .hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "steps" "desk" "phone"; }
+  .hero .addsteps { margin: 24px 0 0 !important; }
+  .hero .deskwrap { margin: 20px 0 20px; }
 }
 .deskwrap { position: relative; height: 380px; }
 .desk { position: absolute; left: 0; top: 0; width: 600px; height: 380px; transform-origin: 0 0; font-size: 12px; line-height: 1.25; color: var(--ink); }
