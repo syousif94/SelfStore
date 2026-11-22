@@ -26,8 +26,8 @@
   --wall-a: #c9d6f2;
   --wall-b: #e9dcf0;
   --wall-c: #f4e6d8;
-  --wp-0: #b8925f; --wp-1a: #7a5a3c; --wp-1b: #ecd7b2; --wp-2a: #6b5444; --wp-2b: #f4ede1; --wp-3a: #4a4560; --wp-3b: #bcbfcd; --wp-4a: #5e6f84; --wp-4b: #e0e4e7; --wp-5a: #8b9aa9; --wp-5b: #eff1f2;
-  --wp-edge: rgba(255,255,255,.9);
+  --wp-0: #dfe6f0; --wp-ba: #f6ecca; --wp-bb: #c4d8f4; --wp-1a: #a9cbf7; --wp-1b: #3c72e0; --wp-2a: #6d9ef2; --wp-2b: #1c4ed3; --wp-3a: #8fbfff; --wp-3b: #2a5fe2; --wp-4a: #d3e6fd; --wp-4b: #6e9cec;
+  --wp-edge: rgba(255,255,255,.8);
   --win: #ffffff; --win-side: #f0f0f2; --win-rule: rgba(0,0,0,.1); --win-sel: rgba(0,0,0,.07);
   color-scheme: light;
 }
@@ -38,8 +38,8 @@
     --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
     --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
     --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
-    --wp-0: #16141f; --wp-1a: #0d0c17; --wp-1b: #2f2d55; --wp-2a: #0e0d1a; --wp-2b: #3a3866; --wp-3a: #0b0b18; --wp-3b: #2a2d55; --wp-4a: #0e1124; --wp-4b: #34417a; --wp-5a: #141a33; --wp-5b: #5a6aa0;
-    --wp-edge: rgba(160,160,255,.7);
+    --wp-0: #0b1030; --wp-ba: #0d1436; --wp-bb: #132056; --wp-1a: #3554d8; --wp-1b: #0c1a66; --wp-2a: #3f6cf2; --wp-2b: #0b1c7a; --wp-3a: #2142c4; --wp-3b: #070f45; --wp-4a: #5585ff; --wp-4b: #132690;
+    --wp-edge: rgba(150,185,255,.55);
     --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
     color-scheme: dark;
   }
@@ -50,8 +50,8 @@
   --menubar: rgba(30, 30, 34, 0.7); --menubar-ink: #f2f2f4;
   --panel: rgba(42, 42, 46, 0.86); --panel-rule: rgba(255, 255, 255, 0.12); --panel-hover: rgba(255, 255, 255, 0.1);
   --wall-a: #1d2a4a; --wall-b: #2b2140; --wall-c: #3a2a24;
-    --wp-0: #16141f; --wp-1a: #0d0c17; --wp-1b: #2f2d55; --wp-2a: #0e0d1a; --wp-2b: #3a3866; --wp-3a: #0b0b18; --wp-3b: #2a2d55; --wp-4a: #0e1124; --wp-4b: #34417a; --wp-5a: #141a33; --wp-5b: #5a6aa0;
-    --wp-edge: rgba(160,160,255,.7);
+    --wp-0: #0b1030; --wp-ba: #0d1436; --wp-bb: #132056; --wp-1a: #3554d8; --wp-1b: #0c1a66; --wp-2a: #3f6cf2; --wp-2b: #0b1c7a; --wp-3a: #2142c4; --wp-3b: #070f45; --wp-4a: #5585ff; --wp-4b: #132690;
+    --wp-edge: rgba(150,185,255,.55);
     --win: #1f1f22; --win-side: #29292d; --win-rule: rgba(255,255,255,.1); --win-sel: rgba(255,255,255,.1);
   color-scheme: dark;
 }
@@ -103,9 +103,9 @@ code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   min-height: 600px; padding: 72px 0 72px;
 }
 .desktop > .wrap { width: 100%; }
-/* An original wallpaper in the style of macOS 27: layered curved sheets with bright edges. */
+/* An original wallpaper in the style of macOS 26 Tahoe: glossy blue waves under a pale sky. */
 .wallpaper { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; }
-.wallpaper path { stroke: var(--wp-edge); stroke-width: 2.5; }
+.wallpaper path { stroke: var(--wp-edge); stroke-width: 2; }
 /* A veil keeps the text readable and fades the desktop into the page. */
 .desktop::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
@@ -453,18 +453,18 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
 <header class="desktop">
   <svg class="wallpaper" viewBox="0 0 1440 1200" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
     <defs>
-      <linearGradient id="wp1" gradientUnits="userSpaceOnUse" x1="350" y1="420" x2="688" y2="591"><stop offset="0" style="stop-color: var(--wp-1a)"/><stop offset=".85" style="stop-color: var(--wp-1b)"/></linearGradient>
-      <linearGradient id="wp2" gradientUnits="userSpaceOnUse" x1="730" y1="420" x2="1068" y2="591"><stop offset="0" style="stop-color: var(--wp-2a)"/><stop offset=".85" style="stop-color: var(--wp-2b)"/></linearGradient>
-      <linearGradient id="wp3" gradientUnits="userSpaceOnUse" x1="1110" y1="420" x2="1448" y2="591"><stop offset="0" style="stop-color: var(--wp-3a)"/><stop offset=".85" style="stop-color: var(--wp-3b)"/></linearGradient>
-      <linearGradient id="wp4" gradientUnits="userSpaceOnUse" x1="1490" y1="420" x2="1828" y2="591"><stop offset="0" style="stop-color: var(--wp-4a)"/><stop offset=".85" style="stop-color: var(--wp-4b)"/></linearGradient>
-      <linearGradient id="wp5" gradientUnits="userSpaceOnUse" x1="1870" y1="420" x2="2208" y2="591"><stop offset="0" style="stop-color: var(--wp-5a)"/><stop offset=".85" style="stop-color: var(--wp-5b)"/></linearGradient>
-      <filter id="wps" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="-14" dy="8" stdDeviation="22" flood-color="#000" flood-opacity=".3"/></filter>
+      <linearGradient id="wpb" x1="0" y1="-300" x2="1" y2=".7"><stop offset=".1" style="stop-color: var(--wp-ba)"/><stop offset="1" style="stop-color: var(--wp-bb)"/></linearGradient>
+      <linearGradient id="wp1" gradientUnits="userSpaceOnUse" x1="800" y1="190" x2="953" y2="493"><stop offset="0" style="stop-color: var(--wp-1a)"/><stop offset="1" style="stop-color: var(--wp-1b)"/></linearGradient>
+      <linearGradient id="wp2" gradientUnits="userSpaceOnUse" x1="800" y1="320" x2="953" y2="623"><stop offset="0" style="stop-color: var(--wp-2a)"/><stop offset="1" style="stop-color: var(--wp-2b)"/></linearGradient>
+      <linearGradient id="wp3" gradientUnits="userSpaceOnUse" x1="800" y1="460" x2="953" y2="763"><stop offset="0" style="stop-color: var(--wp-3a)"/><stop offset="1" style="stop-color: var(--wp-3b)"/></linearGradient>
+      <linearGradient id="wp4" gradientUnits="userSpaceOnUse" x1="800" y1="630" x2="953" y2="933"><stop offset="0" style="stop-color: var(--wp-4a)"/><stop offset="1" style="stop-color: var(--wp-4b)"/></linearGradient>
+      <filter id="wps" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="-10" stdDeviation="24" flood-color="#0a1f6b" flood-opacity=".3"/></filter>
     </defs>
-    <path d="M490 -20 C610 180 430 380 210 600 C30 780 -70 960 -130 1240 L2290 1240 L2290 -20 Z" fill="url(#wp1)" filter="url(#wps)"/>
-    <path d="M870 -20 C990 180 810 380 590 600 C410 780 310 960 250 1240 L2290 1240 L2290 -20 Z" fill="url(#wp2)" filter="url(#wps)"/>
-    <path d="M1250 -20 C1370 180 1190 380 970 600 C790 780 690 960 630 1240 L2290 1240 L2290 -20 Z" fill="url(#wp3)" filter="url(#wps)"/>
-    <path d="M1630 -20 C1750 180 1570 380 1350 600 C1170 780 1070 960 1010 1240 L2290 1240 L2290 -20 Z" fill="url(#wp4)" filter="url(#wps)"/>
-    <path d="M2010 -20 C2130 180 1950 380 1730 600 C1550 780 1450 960 1390 1240 L2290 1240 L2290 -20 Z" fill="url(#wp5)" filter="url(#wps)"/>
+    <rect x="-40" y="-40" width="1540" height="1300" fill="url(#wpb)"/>
+    <path d="M-40 680 C360 620 620 320 900 120 C1100 -20 1300 -80 1500 -120 L1500 1260 L-40 1260 Z" fill="url(#wp1)" filter="url(#wps)"/>
+    <path d="M-40 810 C360 750 620 450 900 250 C1100 110 1300 50 1500 10 L1500 1260 L-40 1260 Z" fill="url(#wp2)" filter="url(#wps)"/>
+    <path d="M-40 950 C360 890 620 590 900 390 C1100 250 1300 190 1500 150 L1500 1260 L-40 1260 Z" fill="url(#wp3)" filter="url(#wps)"/>
+    <path d="M-40 1120 C360 1060 620 760 900 560 C1100 420 1300 360 1500 320 L1500 1260 L-40 1260 Z" fill="url(#wp4)" filter="url(#wps)"/>
   </svg>
   <div class="panel closed" id="panel" role="menu" aria-label="The SelfStore menu (a preview)">
     <div class="head">
