@@ -1,5 +1,6 @@
 #!/bin/zsh
 # Builds a notarized SelfStore for Mac, publishes it as a GitHub release and updates the website.
+# It first builds the iPhone app and commits it to the repo as selfstore/SelfStoreiOS.ipa + selfstore.yml.
 #
 #   scripts/deploy.sh ["Release notes"]
 #
@@ -34,8 +35,42 @@ if [[ ${DRY_RUN:-0} != 1 && -n $(git status --porcelain -- . ':!docs/latest.json
   read -q "?Continue? [y/N] " || { echo; exit 1; }; echo
 fi
 
-# 1. Make sure SelfStore knows this checkout's Mac scheme.
 command -v xcodegen >/dev/null && xcodegen generate --quiet
+
+# 0. Build the iPhone app and export it into the repo (selfstore/SelfStoreiOS.ipa + selfstore.yml), so anyone
+#    can add this repo to their SelfStore and install the app without building it. Skip with SKIP_IOS=1.
+if [[ ${SKIP_IOS:-0} != 1 ]]; then
+  IOS=$(curl -sf "$API/projects" | json '[p["id"] for p in d if p.get("platform")=="ios" and p.get("name")=="SelfStoreiOS" and not p.get("repoId")][:1]' | tr -d "[]' ")
+  if [[ -z $IOS ]]; then
+    say "Adding $ROOT/SelfStore.xcodeproj (SelfStoreiOS) to SelfStore"
+    IOS=$(curl -sf -X POST "$API/projects" -H 'Content-Type: application/json' \
+      -d "{\"path\":\"$ROOT/SelfStore.xcodeproj\",\"scheme\":\"SelfStoreiOS\",\"platform\":\"ios\"}" | json 'd["id"]')
+  fi
+  curl -sf -X PATCH "$API/projects/$IOS" -H 'Content-Type: application/json' -d '{"exportToRepo": true}' >/dev/null \
+    || die "Couldn't turn on export to repo for $IOS"
+  say "Building $IOS for the repo…"
+  curl -sf -X POST "$API/projects/$IOS/build" >/dev/null || die "Couldn't start the iPhone build"
+  last=""
+  while true; do
+    sleep 5
+    P=$(curl -sf "$API/projects/$IOS")
+    state=$(print -r -- $P | json 'd.get("state","")')
+    step=$(print -r -- $P | json 'd.get("step") or ""')
+    [[ $step != $last ]] && { echo "   $step"; last=$step; }
+    case $state in
+      succeeded) break ;;
+      failed|cancelled) die "iPhone build $state: $(print -r -- $P | json 'd.get("error") or d.get("step")'). Log: $API/projects/$IOS/log" ;;
+    esac
+  done
+  [[ -f selfstore/SelfStoreiOS.ipa && -f selfstore.yml ]] || die "The iPhone build didn't export selfstore/SelfStoreiOS.ipa"
+  if [[ ${DRY_RUN:-0} != 1 ]]; then
+    git add selfstore.yml selfstore/SelfStoreiOS.ipa
+    git diff --cached --quiet -- selfstore.yml selfstore/SelfStoreiOS.ipa \
+      || git commit -q -m "Repo: SelfStore for iPhone $(print -r -- $P | json 'd.get("step") or ""' | sed 's/^Built //')" -- selfstore.yml selfstore/SelfStoreiOS.ipa
+  fi
+fi
+
+# 1. Make sure SelfStore knows this checkout's Mac scheme.
 PROJ=$(curl -sf "$API/projects" | json '[p["id"] for p in d if p.get("platform")=="macos" and p.get("name")=="SelfStoreMac"][:1]' | tr -d "[]' ")
 if [[ -z $PROJ ]]; then
   say "Adding $ROOT/SelfStore.xcodeproj to SelfStore"
