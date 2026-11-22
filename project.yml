@@ -1,0 +1,46 @@
+name: SelfStore
+options:
+  bundleIdPrefix: com.sammyyousif
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+  createIntermediateGroups: true
+packages:
+  Yams:
+    url: https://github.com/jpsim/Yams
+    from: 6.2.0
+settings:
+  base:
+    DEVELOPMENT_TEAM: 5E7D5R7C83
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  SelfStoreMac:
+    type: application
+    platform: macOS
+    sources: [Mac, Shared, Resources/Mac]
+    dependencies:
+      - package: Yams
+    settings:
+      base:
+        PRODUCT_NAME: SelfStore
+        PRODUCT_BUNDLE_IDENTIFIER: com.sammyyousif.selfstore.mac
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: Resources/Mac/SelfStore.entitlements
+        INFOPLIST_FILE: Resources/Mac/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+  SelfStoreiOS:
+    type: application
+    platform: iOS
+    sources: [iOS, Shared, Resources/iOS]
+    settings:
+      base:
+        PRODUCT_NAME: SelfStore
+        PRODUCT_BUNDLE_IDENTIFIER: com.sammyyousif.selfstore
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: Resources/iOS/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
