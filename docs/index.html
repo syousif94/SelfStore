@@ -434,7 +434,10 @@ a.snip-link:hover pre.snip { border-color: var(--blue); }
 :root[data-theme="dark"] .k { color: #f0a070; } :root[data-theme="dark"] .s { color: #7fd1a6; }
 
 /* Setup */
-.setup { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: 40px; counter-reset: s; }
+.setup { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 36px; margin-top: 40px; counter-reset: s; }
+.setup .opt-tag { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--rule); border-radius: 5px; padding: 1px 6px; margin-left: 4px; vertical-align: 2px; }
+.setup p b { color: var(--ink); font-weight: 600; }
+.lead a { color: var(--blue); text-decoration: none; }
 @media (max-width: 860px) { .setup { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .setup { grid-template-columns: 1fr; } }
 .setup div { counter-increment: s; }
@@ -658,6 +661,40 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   </div>
 </header>
 
+<section id="setup">
+  <div class="wrap">
+    <p class="kicker">Setup</p>
+    <h2>What you need.</h2>
+    <p class="lead">A Mac on macOS 15, <a href="https://tailscale.com">Tailscale</a> on the Mac and your iPhone, and a paid Apple Developer account. Setup takes about ten minutes.</p>
+    <div class="setup">
+      <div>
+        <h4>Install SelfStore</h4>
+        <p><a class="dl-link" href="https://github.com/syousif94/SelfStore/releases/latest/download/SelfStore.dmg">Download the .dmg</a> and drag SelfStore to Applications. It starts in the menu bar.</p>
+      </div>
+      <div>
+        <h4>Install Tailscale</h4>
+        <p>Get Tailscale <a href="https://tailscale.com/download/mac">for Mac</a> and <a href="https://apps.apple.com/app/tailscale/id1470499037">for iPhone</a>, and sign in to the same account on both. Your phone can now reach your Mac from anywhere.</p>
+      </div>
+      <div>
+        <h4>Turn on HTTPS certificates</h4>
+        <p>iOS only installs apps from a trusted HTTPS address. In the Tailscale admin console, open <a href="https://login.tailscale.com/admin/dns">DNS</a>, make sure MagicDNS is on, then click <b>Enable</b> under HTTPS Certificates. SelfStore then shares itself on your Mac's .ts.net address, port 8767, and Tailscale fetches the certificate the first time it's opened. <a href="https://tailscale.com/kb/1153/enabling-https">More on Tailscale HTTPS</a></p>
+      </div>
+      <div>
+        <h4>Add an App Store Connect key</h4>
+        <p>In <a href="https://appstoreconnect.apple.com/access/integrations/api">App Store Connect ▸ Users and Access ▸ Integrations</a>, generate a team key with the App Manager role and download the .p8 (Apple only lets you download it once). In SelfStore ▸ Settings ▸ Signing, choose the .p8 and paste the Key ID and the Issuer ID shown above the keys list. SelfStore creates the distribution certificate and ad hoc profiles for you.</p>
+      </div>
+      <div>
+        <h4>Register your iPhone</h4>
+        <p>Open <code>/register</code> on your Mac's Tailscale address in Safari on the iPhone and allow the profile. Every build is re-signed to include it, so your builds install on it.</p>
+      </div>
+      <div>
+        <h4>Mac apps as .dmg <span class="opt-tag">Optional</span></h4>
+        <p>Add a Developer ID Application certificate and SelfStore builds Mac app projects as a .dmg and .zip, signed with the hardened runtime, notarized and stapled, so they open on any Mac. The Account Holder creates it in Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸ Developer ID Application; then click Refresh in Settings ▸ Signing, or import a .p12. Without it, Mac builds are signed ad hoc and not notarized.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="ways">
   <div class="wrap">
     <p class="kicker">Adding apps</p>
@@ -680,7 +717,7 @@ curl --data-binary @Trailhead.ipa \
         <h3>An Xcode project</h3>
         <div>
           <p>Add a <code>.xcodeproj</code> or <code>.xcworkspace</code> once, then build it from your iPhone, the menu bar or the API. SelfStore builds it, signs it for your devices and publishes it as a new version.</p>
-          <p>Mac apps come out as a signed, notarized <code>.dmg</code>.</p>
+          <p>Mac app projects come out as a <code>.dmg</code> and <code>.zip</code>, signed and notarized when you add a <a class="more" href="#setup">Developer ID certificate</a>.</p>
         </div>
 <pre class="snip"><span class="c"># register once…</span>
 curl localhost:8765/api/projects -d \
@@ -707,20 +744,6 @@ curl -X POST \
     <span class="k">ipa</span>: selfstore/Pantry.ipa</pre>
         </a>
       </div>
-    </div>
-  </div>
-</section>
-
-<section id="setup">
-  <div class="wrap">
-    <p class="kicker">Setup</p>
-    <h2>What you need.</h2>
-    <p class="lead">A Mac on macOS 15, Tailscale on the Mac and your iPhone, and a paid Apple Developer account.</p>
-    <div class="setup">
-      <div><h4>Install SelfStore</h4><p><a class="dl-link" href="https://github.com/syousif94/SelfStore/releases/latest/download/SelfStore.dmg">Download the .dmg</a> and drag SelfStore to Applications. It starts in the menu bar.</p></div>
-      <div><h4>Turn on Tailscale HTTPS</h4><p>iOS only installs from a trusted HTTPS address. Turn on <a href="https://tailscale.com/kb/1153/enabling-https">HTTPS certificates</a> for your tailnet and SelfStore serves itself on port 8767.</p></div>
-      <div><h4>Add an API key</h4><p>In Settings ▸ Signing, add an App Store Connect key with the App Manager role. SelfStore makes the certificate and profiles.</p></div>
-      <div><h4>Register your iPhone</h4><p>Open <code>/register</code> on your Mac's Tailscale address in Safari and allow the profile. Your builds now install on it.</p></div>
     </div>
   </div>
 </section>
