@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "build": "202611230241",
-  "tag": "v1.0-202611230241",
-  "date": "2026-11-23T02:42:56Z",
+  "build": "202611230258",
+  "tag": "v1.0-202611230258",
+  "date": "2026-11-23T02:59:13Z",
   "repo": "syousif94/SelfStore",
-  "dmg": "https://github.com/syousif94/SelfStore/releases/download/v1.0-202611230241/SelfStore.dmg",
-  "zip": "https://github.com/syousif94/SelfStore/releases/download/v1.0-202611230241/SelfStore.zip",
-  "dmgSize": 4172978,
+  "dmg": "https://github.com/syousif94/SelfStore/releases/download/v1.0-202611230258/SelfStore.dmg",
+  "zip": "https://github.com/syousif94/SelfStore/releases/download/v1.0-202611230258/SelfStore.zip",
+  "dmgSize": 4191255,
   "minimumSystemVersion": "15.0",
   "notarized": true
 }
