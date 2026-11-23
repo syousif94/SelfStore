@@ -701,11 +701,28 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
 
 <section id="ways">
   <div class="wrap">
-    <p class="kicker">Adding apps</p>
-    <h2>Three ways in.</h2>
-    <p class="lead">Hand SelfStore a finished build, an Xcode project to build, or a git repo that describes its apps.</p>
+    <h2>How to add apps.</h2>
+    <p class="lead">Add a git repo that describes its apps, hand SelfStore a finished build, or give it an Xcode project to build.</p>
 
     <div class="ways">
+      <div class="way">
+        <h3>A <code>selfstore.yml</code></h3>
+        <div>
+          <p>Put one at the root of a public git repo and anyone running SelfStore can add the repo by its URL. List prebuilt .ipa files, projects to build, and the branches to publish.</p>
+          <p><a class="more" href="docs.html#selfstore-yml">selfstore.yml reference →</a></p>
+        </div>
+        <a class="snip-link" href="docs.html#selfstore-yml" aria-label="Open the selfstore.yml reference">
+<pre class="snip"><span class="k">version</span>: 1
+<span class="k">branches</span>: [main, beta]
+<span class="k">apps</span>:
+  - <span class="k">name</span>: Trailhead
+    <span class="k">project</span>: apps/Trailhead/Trailhead.xcodeproj
+    <span class="k">scheme</span>: Trailhead
+  - <span class="k">name</span>: Pantry
+    <span class="k">ipa</span>: selfstore/Pantry.ipa</pre>
+        </a>
+      </div>
+
       <div class="way">
         <h3>An <code>.ipa</code></h3>
         <div>
@@ -729,24 +746,6 @@ curl localhost:8765/api/projects -d \
 <span class="c"># …then build whenever you like</span>
 curl -X POST \
   localhost:8765/api/projects/trailhead-trailhead/build</pre>
-      </div>
-
-      <div class="way">
-        <h3>A <code>selfstore.yml</code></h3>
-        <div>
-          <p>Put one at the root of a public git repo and anyone running SelfStore can add the repo by its URL. List prebuilt .ipa files, projects to build, and the branches to publish.</p>
-          <p><a class="more" href="docs.html#selfstore-yml">selfstore.yml reference →</a></p>
-        </div>
-        <a class="snip-link" href="docs.html#selfstore-yml" aria-label="Open the selfstore.yml reference">
-<pre class="snip"><span class="k">version</span>: 1
-<span class="k">branches</span>: [main, beta]
-<span class="k">apps</span>:
-  - <span class="k">name</span>: Trailhead
-    <span class="k">project</span>: apps/Trailhead/Trailhead.xcodeproj
-    <span class="k">scheme</span>: Trailhead
-  - <span class="k">name</span>: Pantry
-    <span class="k">ipa</span>: selfstore/Pantry.ipa</pre>
-        </a>
       </div>
     </div>
   </div>
@@ -818,9 +817,13 @@ curl -X POST \
   // ---- Adding apps: a scaled Mac desk (files, cursor, App Library window) next to a small iPhone.
   var desk = $('desk'), deskwrap = $('deskwrap'), cur = $('cursor'), caps = $('addsteps').children;
   var fIpa = $('f-ipa'), fProj = $('f-proj'), mpScreen = $('mp-screen'), mpTap = $('mp-tap');
+  var wasStacked = null;
   function fit() {
     var stacked = innerWidth <= 860, W = stacked ? 500 : 600, H = stacked ? 470 : 380;
     desk.classList.toggle('stacked', stacked);
+    // The files and window move when the layout switches, so in-flight drags would land in the wrong place: start over.
+    if (wasStacked !== null && wasStacked !== stacked && staging) stage();
+    wasStacked = stacked;
     // Medium widths put the window against the iPhone on its right, a little larger.
     var medium = stacked && innerWidth > 560, w = deskwrap.clientWidth, s = Math.min(medium ? 1.15 : 1, w / W);
     desk.style.transform = 'scale(' + s + ')';
@@ -873,17 +876,16 @@ curl -X POST \
       if (k < 1 && st.length) requestAnimationFrame(f);
     })(t0);
   }
-  function lift(file) { press(true); file.classList.add('lift'); dragging = file; }
+  function lift(file) { press(true); file.classList.add('lift'); grab[file.id] = pt(file); dragging = file; }
   function drop(file) { press(false); cls('m-drop', 'on', false); file.classList.remove('lift'); file.classList.add('gone'); dragging = null; }
 
-  var st = [];
+  var st = [], staging = false;
   function sat(ms, fn) { st.push(setTimeout(fn, ms)); }
   function reset() {
     st.forEach(clearTimeout); st = [];
     desk.classList.add('snap');
     dragging = null;
     [fIpa, fProj].forEach(function (f) { f.style.transform = ''; f.className = 'file'; });
-    grab[fIpa.id] = pt(fIpa); grab[fProj.id] = pt(fProj);
     press(false); move(rest, 0);
     document.querySelectorAll('#stage .add').forEach(function (r) { r.classList.remove('in', 'sel'); });
     ['m-drop', 'm-menu', 'm-sheet', 'm-plus', 'm-detail', 'mp-menu', 'mp-dim', 'mp-sheet', 'mp-reposh'].forEach(function (id) { cls(id, 'on', false); cls(id, 'in', false); });
@@ -964,7 +966,6 @@ curl -X POST \
     select('m-tally'); detail('tally', 'Tally', 'Version 2.1 (41)');
     cls('mp-pantry-btn', 'building', false); cls('mp-reposh', 'in'); phoneList();
   } else {
-    var staging = false;
     new IntersectionObserver(function (e) {
       if (e[0].isIntersecting && !staging) { staging = true; stage(); }
       else if (!e[0].isIntersecting && staging) { staging = false; st.forEach(clearTimeout); }
