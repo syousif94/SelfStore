@@ -8,6 +8,8 @@ enum MacPackager {
         var keychain: String?
         var teamID: String?
         var notarize: ASCCredentials? // nil = don't notarize
+        /// Developer ID provisioning profiles by bundle ID, for targets whose entitlements need one.
+        var profiles: [String: Data] = [:]
     }
 
     struct Output: Sendable {
@@ -52,7 +54,7 @@ enum MacPackager {
 
         // 1. Sign inside-out with each target's entitlements.
         step(signing.identity == "-" ? "Signing (ad hoc)…" : "Signing with Developer ID…")
-        let entitlements = try entitlementFiles(settings: settings, teamID: signing.teamID, into: staging, warnings: &warnings)
+        let (entitlements, profiles) = try entitlementFiles(settings: settings, signing: signing, into: staging, warnings: &warnings)
         var nested: [URL] = []
         if let e = fm.enumerator(at: appCopy, includingPropertiesForKeys: [.isSymbolicLinkKey]) {
             for case let url as URL in e where ["framework", "appex", "app", "xpc", "dylib", "bundle"].contains(url.pathExtension) {
@@ -62,6 +64,9 @@ enum MacPackager {
         }
         nested.sort { $0.pathComponents.count > $1.pathComponents.count }
         for url in nested + [appCopy] {
+            if let profile = profiles[url.lastPathComponent] {
+                try profile.write(to: url.appendingPathComponent("Contents/embedded.provisionprofile"))
+            }
             try codesign(url, signing, entitlements: entitlements[url.lastPathComponent])
         }
 
@@ -115,11 +120,20 @@ enum MacPackager {
         try Shell.run("/usr/bin/codesign", args + [url.path])
     }
 
-    /// Entitlements per bundle wrapper name with build variables expanded. Entitlements that need a
-    /// provisioning profile on macOS are dropped (Developer ID builds here don't embed one).
-    private static func entitlementFiles(settings: [[String: String]], teamID: String?, into dir: URL,
-                                         warnings: inout [String]) throws -> [String: URL] {
+    /// Keys that only work with a provisioning profile on macOS.
+    static func needsProfile(_ key: String) -> Bool {
+        key.hasPrefix("com.apple.developer.")
+            || ["com.apple.application-identifier", "application-identifier", "keychain-access-groups"].contains(key)
+    }
+
+    /// Entitlements files and provisioning profiles per bundle wrapper name, with build variables expanded.
+    /// Entitlements that need a profile are kept where the target has one (`signing.profiles`) that allows
+    /// them, and dropped otherwise.
+    private static func entitlementFiles(settings: [[String: String]], signing: Signing, into dir: URL,
+                                         warnings: inout [String]) throws -> ([String: URL], [String: Data]) {
+        let teamID = signing.teamID
         var result: [String: URL] = [:]
+        var profiles: [String: Data] = [:]
         for s in settings where result[s["WRAPPER_NAME"] ?? ""] == nil {
             guard let w = s["WRAPPER_NAME"], let rel = s["CODE_SIGN_ENTITLEMENTS"], !rel.isEmpty, let srcRoot = s["SRCROOT"] else { continue }
             let path = rel.hasPrefix("/") ? rel : (srcRoot as NSString).appendingPathComponent(rel)
@@ -128,20 +142,37 @@ enum MacPackager {
             let prefix = teamID.map { $0 + "." } ?? ""
             vars["AppIdentifierPrefix"] = prefix
             vars["TeamIdentifierPrefix"] = prefix
+            let profileData = s["PRODUCT_BUNDLE_IDENTIFIER"].flatMap { signing.profiles[$0] }
+            let allowed = profileData.flatMap { Signer.plist(inProfile: $0)?["Entitlements"] as? [String: Any] }
             var out: [String: Any] = [:]
             for (key, value) in plist {
-                if key.hasPrefix("com.apple.developer.") || ["com.apple.application-identifier", "application-identifier",
-                                                               "keychain-access-groups"].contains(key) {
+                guard needsProfile(key) else { out[key] = expand(value, vars); continue }
+                guard let allowed else {
                     warnings.append("\(w): dropped \(key) (needs a provisioning profile)")
                     continue
                 }
-                out[key] = expand(value, vars)
+                guard let allowedValue = allowed[key] else {
+                    warnings.append("\(w): dropped \(key) (not enabled for this App ID)")
+                    continue
+                }
+                // Fixed values in the profile (e.g. aps-environment=production) win.
+                if let v = allowedValue as? String, !v.contains("*") { out[key] = v } else { out[key] = expand(value, vars) }
+            }
+            if let allowed, let profileData {
+                for key in ["com.apple.application-identifier", "com.apple.developer.team-identifier"] {
+                    if let v = allowed[key] { out[key] = v }
+                }
+                // Developer ID builds talk to the production CloudKit environment.
+                if out["com.apple.developer.icloud-services"] != nil, allowed["com.apple.developer.icloud-container-environment"] != nil {
+                    out["com.apple.developer.icloud-container-environment"] = "Production"
+                }
+                profiles[w] = profileData
             }
             let file = dir.appendingPathComponent("\(w).entitlements")
             try PropertyListSerialization.data(fromPropertyList: out, format: .xml, options: 0).write(to: file)
             result[w] = file
         }
-        return result
+        return (result, profiles)
     }
 
     private static func expand(_ value: Any, _ settings: [String: String]) -> Any {

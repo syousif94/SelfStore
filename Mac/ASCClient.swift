@@ -122,15 +122,19 @@ struct ASCClient: Sendable {
 
     // MARK: Bundle IDs
 
-    func bundleIDResource(for identifier: String) async throws -> String {
-        let found = try await list("/v1/bundleIds", query: ["filter[identifier]": identifier, "filter[platform]": "IOS"])
+    /// `platform` is IOS or MAC_OS. Mac lookups take any platform, since Xcode registers Mac apps as universal
+    /// IDs too; a missing ID is created for `platform`.
+    func bundleIDResource(for identifier: String, platform: String = "IOS") async throws -> String {
+        var query = ["filter[identifier]": identifier]
+        if platform == "IOS" { query["filter[platform]"] = "IOS" }
+        let found = try await list("/v1/bundleIds", query: query)
         if let match = found.first(where: { (Self.attrs($0)["identifier"] as? String) == identifier }), let id = match["id"] as? String {
             return id
         }
         // Names allow letters, numbers and spaces only.
         let name = "SelfStore " + identifier.map { $0.isLetter || $0.isNumber ? String($0) : " " }.joined()
         let json = try await request("POST", "/v1/bundleIds", body: [
-            "data": ["type": "bundleIds", "attributes": ["identifier": identifier, "name": String(name.prefix(60)), "platform": "IOS"]],
+            "data": ["type": "bundleIds", "attributes": ["identifier": identifier, "name": String(name.prefix(60)), "platform": platform]],
         ])
         guard let id = (json["data"] as? [String: Any])?["id"] as? String else { throw ASCError(status: 0, message: "No bundle ID returned") }
         return id
@@ -187,6 +191,13 @@ struct ASCClient: Sendable {
     /// App Store profile (used for TestFlight uploads). Has no device list.
     func createAppStoreProfile(name: String, bundleIDResource: String, certificateID: String) async throws -> Profile {
         try await createProfile(name: name, type: "IOS_APP_STORE", bundleIDResource: bundleIDResource,
+                                certificateID: certificateID, deviceIDs: [])
+    }
+
+    /// Developer ID profile for a Mac app distributed outside the Mac App Store. Mac apps only need one
+    /// when they use entitlements that require a profile (iCloud, push, associated domains…).
+    func createDeveloperIDProfile(name: String, bundleIDResource: String, certificateID: String) async throws -> Profile {
+        try await createProfile(name: name, type: "MAC_APP_DIRECT", bundleIDResource: bundleIDResource,
                                 certificateID: certificateID, deviceIDs: [])
     }
 

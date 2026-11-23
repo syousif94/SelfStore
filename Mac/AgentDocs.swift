@@ -104,7 +104,10 @@ enum AgentDocs {
         `POST /api/projects` to override) produce a `.dmg` and a `.zip` instead of a library entry. With a Developer ID
         Application certificate (`GET /api/signing` → `developerIDCertificate`), SelfStore signs with hardened runtime,
         notarizes with the App Store Connect key and staples the ticket. Without one, builds are signed ad hoc and not notarized.
-        Entitlements that need a provisioning profile (`com.apple.developer.*`, keychain groups) are dropped and listed in `warnings`.
+        Targets with entitlements that need a provisioning profile (`com.apple.developer.*` such as iCloud or push, keychain
+        groups) get a Developer ID profile from the API key, embedded in the bundle; entitlements the App ID doesn't enable
+        are dropped and listed in `warnings`. Without Developer ID signing they're all dropped. iCloud builds use the
+        production CloudKit environment, so deploy the schema there.
 
         - `GET /api/projects/<id>`: `artifacts` (`name`, `path`, `size`), `notarized`, `version`, `warnings`
         - `GET /api/projects/<id>/files/<name>`: download the `.dmg` or `.zip`

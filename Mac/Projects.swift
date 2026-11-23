@@ -336,8 +336,21 @@ final class ProjectStore {
         let signing = SigningManager.shared
         if signing.credentials != nil && signing.developerID == nil { await signing.refresh() }
         let devID = signing.developerID
-        let config = MacPackager.Signing(identity: devID?.sha1 ?? "-", keychain: devID == nil ? nil : signing.keychain.path,
+        var config = MacPackager.Signing(identity: devID?.sha1 ?? "-", keychain: devID == nil ? nil : signing.keychain.path,
                                          teamID: signing.teamID, notarize: devID == nil ? nil : signing.credentials)
+        if devID != nil {
+            // Targets with iCloud, push and the like need a Developer ID profile to keep those entitlements.
+            for s in settings {
+                guard let bundleID = s["PRODUCT_BUNDLE_IDENTIFIER"], config.profiles[bundleID] == nil,
+                      let rel = s["CODE_SIGN_ENTITLEMENTS"], !rel.isEmpty, let srcRoot = s["SRCROOT"] else { continue }
+                let path = rel.hasPrefix("/") ? rel : (srcRoot as NSString).appendingPathComponent(rel)
+                guard let keys = (NSDictionary(contentsOfFile: path) as? [String: Any])?.keys,
+                      keys.contains(where: MacPackager.needsProfile) else { continue }
+                setStep(id, .signing, "Getting a provisioning profile for \(bundleID)…")
+                do { config.profiles[bundleID] = try await signing.developerIDProfile(for: bundleID) }
+                catch { ServerController.shared.noteEvent("No Developer ID profile for \(bundleID): \(error.localizedDescription)") }
+            }
+        }
         let out = outputDir(id)
         let result = try await Task.detached {
             try MacPackager.package(settings: settings, signing: config, out: out) { step in

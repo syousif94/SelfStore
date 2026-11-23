@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 
@@ -11,6 +12,8 @@ final class SigningManager {
     private(set) var certificateID: String?
     /// Developer ID Application identity for Mac apps (nil = Mac builds are signed ad hoc and not notarized).
     private(set) var developerID: SigningKeychain.Identity?
+    /// The account's certificate resource for `developerID`, when the API key can list it.
+    private(set) var developerIDCertificateID: String?
     private(set) var devices: [ASCClient.Device] = []
     private(set) var status = "Not set up"
     private(set) var lastError: String?
@@ -80,6 +83,9 @@ final class SigningManager {
                 }.max { ($0.expires ?? .distantPast) < ($1.expires ?? .distantPast) }
             }
             developerID = pick(ids)
+            developerIDCertificateID = developerID.flatMap { d in
+                devCerts.first { SigningKeychain.normalizeSerial($0.serialNumber) == d.serial }?.id
+            }
             lastError = nil
             if identity == nil {
                 status = "Needs an Apple Distribution certificate"
@@ -166,6 +172,28 @@ final class SigningManager {
     }
 
     // MARK: Signing
+
+    /// A Developer ID provisioning profile for a Mac bundle ID, cached until two weeks before it expires.
+    /// It carries whatever capabilities (iCloud containers, push…) the App ID has on the account.
+    func developerIDProfile(for bundleID: String) async throws -> Data {
+        guard let client, let developerID, let certID = developerIDCertificateID else {
+            throw ASCError(status: 0, message: "Developer ID signing isn't set up")
+        }
+        let dir = keychain.dir.appendingPathComponent("profiles", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let cache = dir.appendingPathComponent("\(bundleID).developerid.provisionprofile")
+        if let data = try? Data(contentsOf: cache), let p = Signer.plist(inProfile: data),
+           let exp = p["ExpirationDate"] as? Date, exp > Date().addingTimeInterval(14 * 86400),
+           let certs = p["DeveloperCertificates"] as? [Data],
+           certs.contains(where: { Insecure.SHA1.hash(data: $0).map { String(format: "%02X", $0) }.joined() == developerID.sha1 }) {
+            return data
+        }
+        let resource = try await client.bundleIDResource(for: bundleID, platform: "MAC_OS")
+        let profile = try await client.createDeveloperIDProfile(
+            name: "SelfStore Developer ID \(bundleID)", bundleIDResource: resource, certificateID: certID)
+        try profile.content.write(to: cache)
+        return profile.content
+    }
 
     func makeSigner(mode: Signer.Mode = .adHoc) async throws -> Signer {
         if !isReady { await refresh() }

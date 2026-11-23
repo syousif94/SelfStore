@@ -16,7 +16,8 @@ Host ad hoc signed iOS apps on your Mac, including multiple versions of each, an
   iOS app, or `POST /api/apps/<bundleId>/latest/testflight`. SelfStore re-signs it for the App Store and uploads it with
   `altool`. The app must already exist in App Store Connect.
 - **Mac apps**: projects with a macOS scheme build a `.dmg` and `.zip`. With a Developer ID certificate (Settings ▸
-  Signing can create one with the API key, or import a .p12), they're signed with hardened runtime, notarized and stapled.
+  Signing can create one with the API key, or import a .p12), they're signed with hardened runtime, notarized and stapled. Apps with iCloud, push or other entitlements that
+  need a profile get a Developer ID provisioning profile embedded.
 - **Git repos**: add a public repo with a [`selfstore.yml`](#selfstoreyml) from the Library, the iPhone or the API. It can list
   prebuilt `.ipa` files (imported and re-signed) and Xcode projects (built on the Mac), on any number of branches.
   Pull, or Pull & Build, from the iPhone, the menu bar or the Library.
