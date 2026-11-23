@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SelfStore</title>
-<meta name="description" content="A menu bar app that hosts your iOS builds, re-signs them for your devices and installs them on your iPhone over Tailscale.">
+<meta name="description" content="Build, package and host your own iOS and Mac apps. A menu bar app for remote and agent-driven development that builds, signs and installs your apps over Tailscale.">
 <link rel="icon" href="images/favicon.png">
 <meta property="og:title" content="SelfStore">
-<meta property="og:description" content="Host your iOS builds on your Mac and install them on your iPhone over the air.">
+<meta property="og:description" content="Build, package and host your own iOS and Mac apps, built for remote and agent-driven development.">
 <meta property="og:image" content="images/icon.png">
 <style>
 :root {
@@ -538,8 +538,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   <!-- Adding apps: drag files onto the App Library window, upload from the iPhone, add a git repo. -->
   <div class="wrap hero" id="stage">
     <div class="hero-copy">
-      <h1>Your builds, on your iPhone, from your Mac.</h1>
-      <p>SelfStore lives in the menu bar. It keeps every .ipa you give it, re-signs them for your devices and installs them over Tailscale, wherever your phone is.</p>
+      <h1>Build, package and host your own iOS and Mac apps.</h1>
+      <p>SelfStore is built for remote and agent-driven development. Start a build from your iPhone, a coding agent or a script, and SelfStore compiles it on your Mac, signs it for your devices and has it ready to install over Tailscale, wherever you are.</p>
       <div class="actions">
         <a class="button primary dl-link" href="https://github.com/syousif94/SelfStore/releases/latest/download/SelfStore.dmg">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.6-.75 2.99-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.24.88-1.29 1.24-2.53 1.26-2.6-.03-.01-2.42-.93-2.45-3.69zM14.08 5.85c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.11 1.77-.97 2.82 1.03.08 2.07-.52 2.71-1.28z"/></svg>
@@ -746,6 +746,38 @@ curl localhost:8765/api/projects -d \
 <span class="c"># …then build whenever you like</span>
 curl -X POST \
   localhost:8765/api/projects/trailhead-trailhead/build</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="mac">
+  <div class="wrap">
+    <p class="kicker">Mac apps</p>
+    <h2>Signed, notarized and packaged.</h2>
+    <p class="lead">SelfStore builds Mac app projects alongside your iOS apps and packages every build as a disk image and a zip archive, ready to distribute.</p>
+
+    <div class="ways">
+      <div class="way">
+        <h3>Notarization</h3>
+        <div>
+          <p>With a Developer ID Application certificate, each build is signed with the hardened runtime, submitted to Apple's notary service with your App Store Connect key, and stapled. The result opens on any Mac without Gatekeeper warnings.</p>
+          <p>Settings ▸ Signing can create the certificate from your API key or import an existing .p12. <a class="more" href="#setup">Setup →</a></p>
+        </div>
+<pre class="snip"><span class="c"># build a Mac scheme like any other project</span>
+curl -X POST \
+  localhost:8765/api/projects/trailhead-mac/build</pre>
+      </div>
+
+      <div class="way">
+        <h3>A <code>.dmg</code> and <code>.zip</code></h3>
+        <div>
+          <p>Every build produces both, along with its version and notarization status. Download them over the API to attach to a release or hand to testers.</p>
+          <p>Mac schemes are detected automatically, whether the project was added from the Library, the API or a <code>selfstore.yml</code>.</p>
+        </div>
+<pre class="snip"><span class="c"># download the notarized disk image</span>
+curl -O \
+  localhost:8765/api/projects/trailhead-mac/files/Trailhead.dmg</pre>
       </div>
     </div>
   </div>
