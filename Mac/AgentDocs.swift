@@ -25,7 +25,7 @@ enum AgentDocs {
 
         - The body is the raw .ipa. `multipart/form-data` also works: `curl -F ipa=@App.ipa -F notes="Fixes login" \(local)/api/apps`
         - Bundle id, name, version, build and icon are read from the .ipa. Many versions of the same app are kept.
-        - Query options: `notes=<text>`, `replace=false` (409 instead of overwriting the same version+build), `keep=<n>` (prune to the newest n versions after upload), `resign=true|false` (override the re-sign setting), `rename=true|false` (override moving the bundle ID to the preferred prefix, see Bundle IDs).
+        - Query options: `notes=<text>`, `replace=false` (409 instead of overwriting the same version+build), `keep=<n>` (prune to the newest n versions after upload), `resign=true|false` (override the re-sign setting), `rename=true|false` (override moving the bundle ID to the preferred prefix, see Bundle IDs), `prefix=<com.example>` (move this upload to a different prefix; implies `rename=true`).
         - Returns 201 with the version JSON, including `installURL` (itms-services link) when Tailscale is serving.
 
         ## Signing
@@ -68,6 +68,9 @@ enum AgentDocs {
         their tail (`com.someone.Notes.Share` → `<prefix>.Notes.Share`); app groups, iCloud containers and keychain groups
         follow. It happens while re-signing, so the original upload is kept and re-signs/TestFlight uploads repeat it.
         Versions record `originalBundleId`. Renaming needs signing to be set up; IDs already on the prefix are left alone.
+        Change the saved prefix with `PATCH /api/settings` `{"bundlePrefix": "com.example", "renameImports": true}` (either key
+        optional; `""` clears the prefix). Allowed over Tailscale without the token, like uploads. `GET /api/info` returns
+        `bundlePrefixSetting` and `renameImports`.
 
         ## TestFlight
 

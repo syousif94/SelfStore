@@ -262,6 +262,9 @@ final class ServerController {
             return try await upload(req)
         case ("POST", 1) where p[0] == "repos" && (req.isViaTailscale || authorized(req)):
             return try addRepo(req)
+        // The bundle ID prefix can be changed from the iOS app (over Tailscale), like uploads.
+        case ("PATCH", 1) where p[0] == "settings" && (req.isViaTailscale || authorized(req)):
+            return try updateSettings(req)
         case ("GET", 1) where p[0] == "signing":
             return .json(signing.apiStatus)
         case ("GET", 1) where p[0] == "devices":
@@ -384,7 +387,16 @@ final class ServerController {
         var notes = req.query["notes"]
         let replace = (req.query["replace"] ?? "true") != "false"
         let resign: Bool? = req.query["resign"].map { $0 != "false" }
-        let rename: Bool? = req.query["rename"].map { $0 != "false" }
+        var rename: Bool? = req.query["rename"].map { $0 != "false" }
+        // `prefix=` moves this upload to a prefix other than the saved one (and implies rename unless rename=false).
+        var prefix: String?
+        if let raw = req.query["prefix"] {
+            guard let clean = BundleRename.validPrefix(raw) else {
+                return .error(400, "prefix must look like com.example (letters, digits, hyphens and dots)")
+            }
+            prefix = clean
+            if rename == nil { rename = true }
+        }
         let file: URL
         if let ct = req.header("content-type"), ct.lowercased().hasPrefix("multipart/form-data") {
             let form = try Multipart.parse(req, contentType: ct)
@@ -408,10 +420,28 @@ final class ServerController {
         defer { try? FileManager.default.removeItem(at: file) }
         let label = req.isLocalDirect ? "Upload" : req.isViaTailscale ? "Upload from \(req.header("tailscale-user-name") ?? "the tailnet")" : "Upload"
         let v = try await library.importIPA(at: file, move: true, notes: notes, replace: replace, resign: resign,
-                                            rename: rename, sourceLabel: label)
+                                            rename: rename, prefix: prefix, sourceLabel: label)
         if let keep = req.query["keep"].flatMap(Int.init) { _ = try? library.prune(bundleId: v.bundleId, keep: keep) }
         note("Added \(v.name) \(v.displayVersion)")
         return .json(catalogVersion(v, req), status: 201)
+    }
+
+    /// `PATCH /api/settings` with `{"bundlePrefix": "com.example", "renameImports": true}` (either key optional).
+    private func updateSettings(_ req: HTTPRequest) throws -> HTTPResponse {
+        let body = (req.bodyData.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:]
+        if let raw = body["bundlePrefix"] as? String {
+            if raw.trimmingCharacters(in: .whitespaces).isEmpty {
+                settings.bundlePrefix = ""
+            } else {
+                guard let clean = BundleRename.validPrefix(raw) else {
+                    return .error(400, "bundlePrefix must look like com.example (letters, digits, hyphens and dots)")
+                }
+                settings.bundlePrefix = clean
+            }
+        }
+        if let on = body["renameImports"] as? Bool { settings.renameImports = on }
+        note(settings.bundlePrefix.isEmpty ? "Cleared the bundle ID prefix" : "Bundle ID prefix set to \(settings.bundlePrefix)")
+        return .json(info(for: req))
     }
 
     private func files(_ req: HTTPRequest, _ p: [String]) -> HTTPResponse {
@@ -488,6 +518,7 @@ final class ServerController {
                    appCount: library.apps.count, signingEnabled: signing.credentials != nil,
                    testFlightEnabled: signing.credentials != nil,
                    bundlePrefix: settings.renameImports && !settings.bundlePrefix.isEmpty ? settings.bundlePrefix : nil,
+                   bundlePrefixSetting: settings.bundlePrefix, renameImports: settings.renameImports,
                    reposEnabled: true)
     }
 

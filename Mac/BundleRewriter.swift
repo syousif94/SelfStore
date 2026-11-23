@@ -21,6 +21,16 @@ struct BundleRename: Codable, Hashable, Sendable {
         return out == original ? nil : out
     }
 
+    /// A cleaned-up prefix (`com.example`), or nil when it isn't a valid bundle ID prefix.
+    static func validPrefix(_ raw: String) -> String? {
+        let clean = raw.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespacesAndNewlines))
+        guard !clean.isEmpty, clean.count <= 100 else { return nil }
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+        let parts = clean.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.allSatisfy({ !$0.isEmpty && $0.unicodeScalars.allSatisfy { $0.isASCII && allowed.contains($0) } }) else { return nil }
+        return clean
+    }
+
     /// Bundle ID components allow letters, digits and hyphens.
     static func sanitize(_ s: String) -> String {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))

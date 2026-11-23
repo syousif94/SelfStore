@@ -60,6 +60,8 @@ public struct ServerInfo: Codable, Hashable, Sendable {
     public var signingEnabled: Bool?    // Mac re-signs builds; devices can register at /register
     public var testFlightEnabled: Bool? = nil // POST /api/apps/<bundleId>/<versionId>/testflight works
     public var bundlePrefix: String? = nil      // uploads and repo apps move to this bundle ID prefix
+    public var bundlePrefixSetting: String? = nil // the prefix saved in Settings, even when renaming is off ("" = none)
+    public var renameImports: Bool? = nil       // whether uploads move to bundlePrefixSetting by default
     public var reposEnabled: Bool? = nil        // /api/repos exists
 }
 

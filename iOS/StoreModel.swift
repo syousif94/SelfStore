@@ -192,7 +192,8 @@ final class StoreModel {
     }()
 
     /// Streams an .ipa to the Mac, which re-signs it (moving it to its bundle ID prefix when `rename`).
-    func uploadIPA(_ file: URL, notes: String, rename: Bool, on id: UUID) async throws -> CatalogVersion {
+    /// `prefix` moves this upload to a prefix other than the Mac's saved one.
+    func uploadIPA(_ file: URL, notes: String, rename: Bool, prefix: String? = nil, on id: UUID) async throws -> CatalogVersion {
         guard let base = server(id)?.tailscaleURL else {
             throw StoreError.server("Uploading needs the Mac's Tailscale address. Turn on Tailscale sharing in SelfStore on the Mac.")
         }
@@ -206,6 +207,7 @@ final class StoreModel {
         var comps = URLComponents(url: base.appendingPathComponent("api/apps"), resolvingAgainstBaseURL: false)!
         comps.queryItems = [URLQueryItem(name: "rename", value: rename ? "true" : "false")]
         if !notes.isEmpty { comps.queryItems?.append(URLQueryItem(name: "notes", value: notes)) }
+        if rename, let prefix, !prefix.isEmpty { comps.queryItems?.append(URLQueryItem(name: "prefix", value: prefix)) }
         var req = URLRequest(url: comps.url!)
         req.httpMethod = "POST"
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
@@ -229,6 +231,26 @@ final class StoreModel {
         return v
     }
 
+    // MARK: Mac settings
+
+    /// The prefix saved on the Mac (whether or not renaming is on). Older Macs only report it while renaming is on.
+    func savedPrefix(on id: UUID) -> String {
+        let info = state(id).info
+        return info?.bundlePrefixSetting ?? info?.bundlePrefix ?? ""
+    }
+
+    func renamesByDefault(on id: UUID) -> Bool {
+        let info = state(id).info
+        return info?.renameImports ?? (info?.bundlePrefix != nil)
+    }
+
+    /// Saves the bundle ID prefix (and whether uploads use it) on the Mac.
+    func updateBundlePrefix(_ prefix: String, rename: Bool, on id: UUID) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["bundlePrefix": prefix, "renameImports": rename])
+        try await post("api/settings", on: id, body: body, viaTailscale: true, method: "PATCH")
+        await refresh(id)
+    }
+
     // MARK: TestFlight
 
     func canUploadToTestFlight(on id: UUID) -> Bool { state(id).info?.testFlightEnabled == true }
@@ -239,14 +261,15 @@ final class StoreModel {
         updatePolling()
     }
 
-    private func post(_ path: String, on id: UUID, body: Data? = nil, viaTailscale: Bool = false) async throws {
+    private func post(_ path: String, on id: UUID, body: Data? = nil, viaTailscale: Bool = false,
+                      method: String = "POST") async throws {
         let base = viaTailscale ? server(id)?.tailscaleURL : (states[id]?.base ?? server(id)?.candidates.first)
         guard let base else {
             throw StoreError.unreachable(viaTailscale ? "the Mac over Tailscale (turn on Tailscale sharing on the Mac)" : "the Mac")
         }
         // Paths may carry a query string.
         var req = URLRequest(url: URL(string: path, relativeTo: base.appendingPathComponent("/"))!.absoluteURL)
-        req.httpMethod = "POST"
+        req.httpMethod = method
         if let body {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")

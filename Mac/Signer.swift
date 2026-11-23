@@ -187,7 +187,13 @@ struct Signer: Sendable {
            certs.contains(where: { Insecure.SHA1.hash(data: $0).map { String(format: "%02X", $0) }.joined() == context.identity.sha1 }) {
             return data
         }
-        let resource = try await context.client.bundleIDResource(for: bundleID)
+        let resource: String
+        do {
+            resource = try await context.client.bundleIDResource(for: bundleID)
+        } catch let e as ASCError where e.status == 409 && e.message.contains("is not available") {
+            throw SignError(message: "\(bundleID) is registered to another developer, so it can't be signed with your team. "
+                + "Move the app to your own bundle ID prefix (Settings ▸ Bundle IDs, or the prefix field when uploading) and try again.")
+        }
         let created = appStore
             ? try await context.client.createAppStoreProfile(
                 name: "SelfStore App Store \(bundleID)", bundleIDResource: resource, certificateID: context.certificateID)

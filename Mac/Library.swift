@@ -131,10 +131,12 @@ final class AppLibrary {
 
     /// The library bundle ID an .ipa with `bundleId` gets: moved to the preferred prefix when renaming is on,
     /// plus `suffix` (a branch name) when given. Renaming needs re-signing, so it only applies when signing.
-    func targetBundleId(for bundleId: String, rename: Bool?, suffix: String?, signing shouldSign: Bool) -> String {
+    /// `prefix` overrides the saved prefix for this import.
+    func targetBundleId(for bundleId: String, rename: Bool?, prefix override: String? = nil, suffix: String?,
+                        signing shouldSign: Bool) -> String {
         guard shouldSign else { return bundleId }
         let settings = Settings.shared
-        let prefix = (rename ?? settings.renameImports) ? settings.bundlePrefix : nil
+        let prefix = (rename ?? settings.renameImports) ? (override ?? settings.bundlePrefix) : nil
         return BundleRename.target(for: bundleId, prefix: prefix, suffix: suffix) ?? bundleId
     }
 
@@ -144,12 +146,13 @@ final class AppLibrary {
     /// `idSuffix` is appended to the app's bundle ID (non-default git branches), so it installs side by side.
     @discardableResult
     func importIPA(at source: URL, move: Bool, notes: String?, replace: Bool = true, resign: Bool? = nil,
-                   rename: Bool? = nil, idSuffix: String? = nil, sourceLabel: String? = nil) async throws -> StoredVersion {
+                   rename: Bool? = nil, prefix: String? = nil, idSuffix: String? = nil,
+                   sourceLabel: String? = nil) async throws -> StoredVersion {
         let info = try await Task.detached(priority: .userInitiated) { try IPAInspector.inspect(source) }.value
         let versionId = Self.safeComponent("\(info.version)-\(info.build.isEmpty ? "0" : info.build)")
         let signing = SigningManager.shared
         let shouldSign = resign ?? (signing.credentials != nil && signing.resignUploads)
-        let target = targetBundleId(for: info.bundleId, rename: rename, suffix: idSuffix, signing: shouldSign)
+        let target = targetBundleId(for: info.bundleId, rename: rename, prefix: prefix, suffix: idSuffix, signing: shouldSign)
         let bundleId = Self.safeComponent(target)
         let fm = FileManager.default
         let dir = versionDir(bundleId, versionId)

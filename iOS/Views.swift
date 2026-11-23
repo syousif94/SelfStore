@@ -21,9 +21,7 @@ struct StoreView: View {
                     WelcomeView(showingAdd: $showingAdd)
                 } else {
                     List {
-                        ForEach(store.servers) { server in
-                            AppsSection(serverID: server.id, showHeader: store.servers.count > 1)
-                        }
+                        AppsSection()
                         ReposSection()
                     }
                     .refreshable { await store.refreshAll() }
@@ -81,95 +79,114 @@ struct ProjectRef: Hashable { var ref: SourceRef }
 
 // MARK: - Sections
 
-private struct SourceHeader: View {
-    @Environment(StoreModel.self) private var store
-    let serverID: UUID
-
-    var body: some View {
-        let state = store.state(serverID)
-        HStack(spacing: 6) {
-            Image(systemName: "desktopcomputer")
-            Text(store.server(serverID)?.name ?? "Mac")
-            if state.loading { ProgressView().controlSize(.mini) }
-            else if state.error != nil { Image(systemName: "wifi.exclamationmark").foregroundStyle(.red) }
-        }
-    }
-}
-
 private struct SourceNotices: View {
     @Environment(StoreModel.self) private var store
     let serverID: UUID
+    var showName = false
 
     var body: some View {
         let state = store.state(serverID)
+        let name = store.server(serverID)?.name ?? "the Mac"
         if let err = state.error {
             Label(err, systemImage: "wifi.exclamationmark").font(.footnote).foregroundStyle(.red)
         } else if let info = state.info, !info.installsAvailable {
             Label("Installs need Tailscale. Turn on sharing in SelfStore on \(info.name).", systemImage: "exclamationmark.triangle.fill")
                 .font(.footnote).foregroundStyle(.orange)
+        } else if let p = state.projects.first(where: { !$0.isMac }), !p.signingReady {
+            Label(showName ? "Signing isn't set up on \(name), so its builds won't install yet."
+                           : "Signing isn't set up on this Mac, so builds won't install yet.",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote).foregroundStyle(.orange)
         }
     }
 }
 
-/// One entry in the unified list: an app (with the projects that build it, if any), or a project with nothing installable yet.
+/// One entry in the unified list: an app (with every project that builds it, iOS and Mac), or a project with nothing installable yet.
 enum StoreItem: Identifiable {
-    case app(CatalogApp, [CatalogProject])
-    case project(CatalogProject)
+    case app(CatalogApp, [CatalogProject], server: UUID)
+    case project(CatalogProject, server: UUID)
 
     var id: String {
         switch self {
-        case .app(let a, _): "app:\(a.bundleId)"
-        case .project(let p): "project:\(p.id)"
+        case .app(let a, _, let s): "\(s):app:\(a.bundleId)"
+        case .project(let p, let s): "\(s):project:\(p.id)"
         }
     }
 
     var date: Date {
         switch self {
-        case .app(let a, let ps): ([a.latest?.uploadedAt] + ps.map(\.startedAt)).compactMap { $0 }.max() ?? .distantPast
-        case .project(let p): p.startedAt ?? .distantPast
+        case .app(let a, let ps, _): ([a.latest?.uploadedAt] + ps.map(\.startedAt)).compactMap { $0 }.max() ?? .distantPast
+        case .project(let p, _): p.startedAt ?? .distantPast
         }
     }
 
-    /// Projects whose builds publish to an app are shown with that app; the rest (never built, Mac apps) stand alone.
-    static func items(_ state: SourceState) -> [StoreItem] {
-        let byBundle = Dictionary(grouping: state.projects.filter { !$0.isMac && $0.bundleId != nil }, by: { $0.bundleId! })
-        let appIDs = Set(state.apps.map(\.bundleId))
-        let apps = state.apps.map { StoreItem.app($0, byBundle[$0.bundleId] ?? []) }
-        let loose = state.projects.filter { p in p.isMac || p.bundleId.map { !appIDs.contains($0) } ?? true }.map(StoreItem.project)
-        return (apps + loose).sorted { $0.date > $1.date }
+    /// The projects that build `app`: iOS projects publishing to it, plus Mac projects from the same
+    /// Xcode project or repo branch, or whose bundle ID matches or extends the app's (com.x.App.mac).
+    static func projects(for app: CatalogApp, in state: SourceState) -> [CatalogProject] {
+        let ios = state.projects.filter { !$0.isMac && $0.bundleId == app.bundleId }
+        let mac = state.projects.filter { p in
+            guard p.isMac else { return false }
+            if let b = p.bundleId, b == app.bundleId || b.hasPrefix(app.bundleId + ".") { return true }
+            return ios.contains { i in
+                if let r = i.repoId { return r == p.repoId && i.branch == p.branch && i.fileName == p.fileName }
+                return p.repoId == nil && i.fileName == p.fileName
+            }
+        }
+        return ios + mac
+    }
+
+    /// Apps carry the iOS projects that publish to them (for the row's build ring and hold-to-build).
+    /// Every other project (Mac apps, projects never built) is listed on its own under Projects.
+    static func items(_ state: SourceState, server: UUID) -> (apps: [StoreItem], projects: [StoreItem]) {
+        var claimed = Set<String>()
+        let apps = state.apps.map { app in
+            let ps = state.projects.filter { !$0.isMac && $0.bundleId == app.bundleId }
+            claimed.formUnion(ps.map(\.id))
+            return StoreItem.app(app, ps, server: server)
+        }
+        let loose = state.projects.filter { !claimed.contains($0.id) }.map { StoreItem.project($0, server: server) }
+        return (apps, loose)
     }
 }
 
+/// Every Mac's apps in one section and the projects that aren't an installable app (Mac apps, never built) in another,
+/// each newest activity first.
 private struct AppsSection: View {
     @Environment(StoreModel.self) private var store
-    let serverID: UUID
-    let showHeader: Bool
 
     var body: some View {
-        let state = store.state(serverID)
+        let all = store.servers.map { StoreItem.items(store.state($0.id), server: $0.id) }
+        let apps = all.flatMap(\.apps).sorted { $0.date > $1.date }
+        let projects = all.flatMap(\.projects).sorted { $0.date > $1.date }
+        let multipleMacs = store.servers.count > 1
         Section {
-            SourceNotices(serverID: serverID)
-            ForEach(StoreItem.items(state)) { item in
-                switch item {
-                case .app(let app, let projects):
-                    NavigationLink(value: SourceRef(server: serverID, id: app.bundleId)) {
-                        AppRow(app: app, projects: projects, serverID: serverID)
-                    }
-                case .project(let p):
-                    NavigationLink(value: ProjectRef(ref: SourceRef(server: serverID, id: p.id))) {
-                        ProjectRow(project: p, serverID: serverID)
-                    }
-                }
-            }
-            if state.apps.isEmpty && state.projects.isEmpty && state.error == nil && state.loadedOnce {
-                Text("No apps on this Mac yet. Upload an .ipa or add a git repo with the + button, or add an Xcode project in SelfStore on the Mac.")
+            ForEach(store.servers) { SourceNotices(serverID: $0.id, showName: multipleMacs) }
+            ForEach(apps) { row($0, multipleMacs) }
+            if apps.isEmpty && projects.isEmpty && store.servers.allSatisfy({ store.state($0.id).loadedOnce && store.state($0.id).error == nil }) {
+                Text("No apps yet. Upload an .ipa or add a git repo with the + button, or add an Xcode project in SelfStore on the Mac.")
                     .foregroundStyle(.secondary)
             }
-        } header: {
-            if showHeader { SourceHeader(serverID: serverID) }
-        } footer: {
-            if let p = state.projects.first(where: { !$0.isMac }), !p.signingReady {
-                Text("Signing isn't set up on this Mac, so builds won't install yet.")
+        }
+        if !projects.isEmpty {
+            Section {
+                ForEach(projects) { row($0, multipleMacs) }
+            } header: {
+                Text("Projects")
+            } footer: {
+                Text("Mac apps and projects that haven't been built yet. iPhone projects move up to Apps after their first build.")
+            }
+        }
+    }
+
+    @ViewBuilder private func row(_ item: StoreItem, _ multipleMacs: Bool) -> some View {
+        switch item {
+        case .app(let app, let projects, let serverID):
+            NavigationLink(value: SourceRef(server: serverID, id: app.bundleId)) {
+                AppRow(app: app, projects: projects, serverID: serverID, showMac: multipleMacs)
+            }
+        case .project(let p, let serverID):
+            NavigationLink(value: ProjectRef(ref: SourceRef(server: serverID, id: p.id))) {
+                ProjectRow(project: p, serverID: serverID, showMac: multipleMacs)
             }
         }
     }
@@ -243,22 +260,22 @@ struct ProjectIcon: View {
     }
 }
 
-/// What the button on a row does by default (Macs ▸ Row Button).
-enum RowAction: String, CaseIterable { case install, build }
-
 private struct AppRow: View {
     @Environment(StoreModel.self) private var store
-    @AppStorage("rowAction") private var rowAction = RowAction.install
     let app: CatalogApp
     let projects: [CatalogProject]
     let serverID: UUID
+    var showMac = false
+
+    @State private var error: String?
 
     private var active: CatalogProject? { projects.first(where: \.isActive) }
-    /// The project the Build action uses: the most recently built one.
+    /// The project holding Install builds: the most recently built one.
     private var project: CatalogProject? { projects.max { ($0.startedAt ?? .distantPast) < ($1.startedAt ?? .distantPast) } }
 
     var body: some View {
         HStack(spacing: 14) {
+            HStack(spacing: 14) {
             AppIcon(url: store.url(app.iconPath ?? app.latest?.iconPath, on: serverID), size: 60)
             VStack(alignment: .leading, spacing: 3) {
                 Text(app.name).font(.headline).lineLimit(1)
@@ -269,20 +286,34 @@ private struct AppRow: View {
                 if let p = active ?? projects.first(where: { $0.state == "failed" }) {
                     BuildStatusLine(project: p)
                 } else if let v = app.latest {
-                    Text(v.uploadedAt, format: .relative(presentation: .named)).font(.caption).foregroundStyle(.tertiary)
+                    (Text(v.uploadedAt, format: .relative(presentation: .named))
+                     + Text(showMac ? " · \(store.server(serverID)?.name ?? "")" : ""))
+                        .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
                 }
             }
             Spacer(minLength: 8)
+            }
+            .contentShape(Rectangle())
+            .contextMenu { menu }
+            // Install by default; hold it to build. While a build runs, a spinning ring around a stop button cancels it.
             if let p = active {
                 BuildButton(project: p, serverID: serverID)
-            } else if rowAction == .build, let p = project {
-                BuildButton(project: p, serverID: serverID)
             } else if let v = app.latest {
-                InstallButton(version: v)
+                InstallButton(version: v, onHold: project.map { p in
+                    { Task {
+                        do { try await store.build(p, on: serverID) }
+                        catch { self.error = error.localizedDescription }
+                    } }
+                })
             }
         }
         .padding(.vertical, 4)
-        .contextMenu {
+        .alert("Couldn't Start Build", isPresented: .constant(error != nil)) {
+            Button("OK") { error = nil }
+        } message: { Text(error ?? "") }
+    }
+
+    @ViewBuilder private var menu: some View {
             if let v = app.latest {
                 Button("Install \(v.displayVersion)", systemImage: "arrow.down.circle") { store.install(v) }
                     .disabled(v.installURL == nil)
@@ -296,7 +327,6 @@ private struct AppRow: View {
                     }
                 }
             }
-        }
     }
 }
 
@@ -304,13 +334,15 @@ private struct ProjectRow: View {
     @Environment(StoreModel.self) private var store
     let project: CatalogProject
     let serverID: UUID
+    var showMac = false
 
     var body: some View {
         HStack(spacing: 14) {
             ProjectIcon(url: store.url(project.iconPath, on: serverID), size: 60)
             VStack(alignment: .leading, spacing: 3) {
                 Text(project.name).font(.headline).lineLimit(1)
-                Text(project.isMac ? "\(project.fileName) · Mac" : project.fileName)
+                Text([project.fileName, project.isMac ? "Mac app" : nil, showMac ? store.server(serverID)?.name : nil]
+                        .compactMap { $0 }.joined(separator: " · "))
                     .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 BuildStatusLine(project: project)
             }
@@ -385,14 +417,30 @@ struct InstallButton: View {
     @Environment(StoreModel.self) private var store
     let version: CatalogVersion
     var title = "Install"
+    /// Holding the button runs this instead of installing (the list uses it to start a build).
+    var onHold: (() -> Void)? = nil
+    @State private var held = false
+    @State private var holds = 0
 
     var body: some View {
-        Button(title) { store.install(version) }
-            .font(.subheadline.bold())
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .controlSize(.small)
-            .disabled(version.installURL == nil)
+        Button(title) {
+            // The release that ends a hold also "taps"; swallow it.
+            if held { held = false; return }
+            store.install(version)
+        }
+        .font(.subheadline.bold())
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.small)
+        .disabled(version.installURL == nil && onHold == nil)
+        .opacity(version.installURL == nil && onHold != nil ? 0.5 : 1)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onChanged { _ in held = false }
+                .onEnded { _ in held = true; holds += 1; onHold?() },
+            isEnabled: onHold != nil)
+        .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+        .accessibilityAction(named: "Build") { onHold?() }
     }
 }
 
@@ -405,6 +453,10 @@ struct AppDetailView: View {
 
     var body: some View {
         if let app = store.state(ref.server).apps.first(where: { $0.bundleId == ref.id }) {
+            let projects = StoreItem.projects(for: app, in: store.state(ref.server))
+            // The header's Build button: the running build, else the most recently built iOS project.
+            let primary = projects.first(where: \.isActive)
+                ?? projects.filter { !$0.isMac }.max { ($0.startedAt ?? .distantPast) < ($1.startedAt ?? .distantPast) }
             List {
                 Section {
                     HStack(spacing: 16) {
@@ -413,8 +465,12 @@ struct AppDetailView: View {
                             Text(app.name).font(.title2.bold())
                             if let v = app.latest {
                                 Text("Version \(v.displayVersion)").foregroundStyle(.secondary)
-                                InstallButton(version: v).padding(.top, 6)
                             }
+                            HStack(spacing: 10) {
+                                if let v = app.latest { InstallButton(version: v) }
+                                if let p = primary { BuildButton(project: p, serverID: ref.server) }
+                            }
+                            .padding(.top, 6)
                         }
                     }
                     .listRowBackground(Color.clear)
@@ -423,14 +479,14 @@ struct AppDetailView: View {
                 if let v = app.latest, let notes = v.notes {
                     Section("What's New") { Text(notes) }
                 }
-                let projects = store.state(ref.server).projects.filter { !$0.isMac && $0.bundleId == app.bundleId }
                 if !projects.isEmpty {
                     Section {
                         ForEach(projects) { p in
                             HStack(spacing: 12) {
                                 NavigationLink(value: ProjectRef(ref: SourceRef(server: ref.server, id: p.id))) {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(p.branch.map { "\(p.name) · \($0)" } ?? p.name).font(.subheadline.weight(.semibold))
+                                        Text(([p.name] + [p.branch, p.isMac ? "Mac" : nil].compactMap { $0 }).joined(separator: " · "))
+                                            .font(.subheadline.weight(.semibold))
                                         BuildStatusLine(project: p)
                                     }
                                 }
@@ -440,7 +496,9 @@ struct AppDetailView: View {
                     } header: {
                         Text("Build")
                     } footer: {
-                        Text("\(store.server(ref.server)?.name ?? "The Mac") builds the project, signs it for your devices and adds it here as a new version.")
+                        Text(projects.contains(where: \.isMac)
+                             ? "\(store.server(ref.server)?.name ?? "The Mac") builds each project. iPhone builds are signed for your devices and added here as new versions; Mac builds are downloads on their project page."
+                             : "\(store.server(ref.server)?.name ?? "The Mac") builds the project, signs it for your devices and adds it here as a new version.")
                     }
                 }
                 if let v = app.latest, store.canUploadToTestFlight(on: ref.server) {
@@ -632,10 +690,84 @@ struct ProjectDetailView: View {
 
 // MARK: - Macs
 
+/// Settings of one Mac that can be changed from the phone.
+struct MacSettingsView: View {
+    @Environment(StoreModel.self) private var store
+    let server: UUID
+    @State private var prefix = ""
+    @State private var rename = true
+    @State private var loaded = false
+    @State private var saving = false
+    @State private var error: String?
+    @State private var saved = false
+
+    private var trimmed: String { prefix.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespaces)) }
+    private var changed: Bool { trimmed != store.savedPrefix(on: server) || rename != store.renamesByDefault(on: server) }
+
+    var body: some View {
+        Form {
+            if !store.canWrite(on: server) {
+                Section {
+                    Label("Changing settings needs the Mac's Tailscale address. Turn on Tailscale sharing in SelfStore on the Mac.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
+            }
+            Section {
+                TextField("Prefix", text: $prefix, prompt: Text("com.example"))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                Toggle("Move uploads, repo apps and builds to this prefix", isOn: $rename)
+            } header: {
+                Text("Bundle ID Prefix")
+            } footer: {
+                if !BundlePrefixSection.isValid(prefix) {
+                    Text("Use letters, digits and hyphens, separated by dots.").foregroundStyle(.red)
+                } else {
+                    Text("Apps from other developers carry bundle IDs registered to their team. With a prefix, com.someone.App becomes \(trimmed.isEmpty ? "com.example" : trimmed).App so it can be signed with this Mac's team.")
+                }
+            }
+            if let error { Section { Text(error).foregroundStyle(.red) } }
+        }
+        .navigationTitle(store.server(server)?.name ?? "Mac")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                if saving { ProgressView() } else {
+                    Button(saved && !changed ? "Saved" : "Save") { save() }
+                        .disabled(!changed || !BundlePrefixSection.isValid(prefix) || !store.canWrite(on: server))
+                }
+            }
+        }
+        .onChange(of: store.state(server).info, initial: true) { load() }
+        .onChange(of: prefix) { saved = false }
+        .onChange(of: rename) { saved = false }
+    }
+
+    private func load() {
+        guard !loaded, store.state(server).info != nil else { return }
+        loaded = true
+        prefix = store.savedPrefix(on: server)
+        rename = store.renamesByDefault(on: server)
+    }
+
+    private func save() {
+        saving = true; error = nil
+        Task {
+            defer { saving = false }
+            do {
+                try await store.updateBundlePrefix(trimmed, rename: rename, on: server)
+                prefix = store.savedPrefix(on: server)
+                saved = true
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
 struct MacsView: View {
     @Environment(StoreModel.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("rowAction") private var rowAction = RowAction.install
     @State private var showingAdd = false
 
     var body: some View {
@@ -644,18 +776,20 @@ struct MacsView: View {
                 Section {
                     ForEach(store.servers) { s in
                         let state = store.state(s.id)
-                        HStack(spacing: 12) {
-                            Image(systemName: "desktopcomputer").font(.title2).foregroundStyle(.tint).frame(width: 36)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(s.name).font(.headline)
-                                Text(status(state)).font(.caption).foregroundStyle(state.error == nil ? Color.secondary : Color.red)
-                                Text((s.tailscaleURL ?? s.lanURL)?.host ?? "").font(.caption2).foregroundStyle(.tertiary)
-                            }
-                            Spacer()
-                            if state.info?.signingEnabled == true, s.tailscaleURL != nil {
-                                Button("Register") { store.openRegistration(s.id) }
-                                    .buttonStyle(.bordered).controlSize(.small)
-                                    .accessibilityHint("Registers this iPhone so the Mac can sign apps for it")
+                        NavigationLink { MacSettingsView(server: s.id) } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "desktopcomputer").font(.title2).foregroundStyle(.tint).frame(width: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(s.name).font(.headline)
+                                    Text(status(state)).font(.caption).foregroundStyle(state.error == nil ? Color.secondary : Color.red)
+                                    Text((s.tailscaleURL ?? s.lanURL)?.host ?? "").font(.caption2).foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                if state.info?.signingEnabled == true, s.tailscaleURL != nil {
+                                    Button("Register") { store.openRegistration(s.id) }
+                                        .buttonStyle(.bordered).controlSize(.small)
+                                        .accessibilityHint("Registers this iPhone so the Mac can sign apps for it")
+                                }
                             }
                         }
                         .swipeActions {
@@ -666,14 +800,6 @@ struct MacsView: View {
                     .onMove { store.move(from: $0, to: $1) }
                 } footer: {
                     Text("Apps and projects from every Mac show up together. “Register” adds this iPhone to a Mac's signing so its builds install here.")
-                }
-                Section {
-                    Picker("Row Button", selection: $rowAction) {
-                        Text("Install").tag(RowAction.install)
-                        Text("Build").tag(RowAction.build)
-                    }
-                } footer: {
-                    Text("What the button next to each app does. Apps that aren't built by a Mac always show Install; touch and hold any app for the other action.")
                 }
             }
             .navigationTitle("Macs")

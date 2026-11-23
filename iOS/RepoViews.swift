@@ -287,6 +287,9 @@ struct UploadView: View {
     @State private var server: UUID?
     @State private var notes = ""
     @State private var rename = true
+    @State private var prefix = ""
+    @State private var saveAsDefault = false
+    @State private var prefixLoadedFor: UUID?
     @State private var error: String?
     @State private var done: CatalogVersion?
 
@@ -298,12 +301,8 @@ struct UploadView: View {
                     TextField("Release notes (optional)", text: $notes, axis: .vertical)
                 }
                 MacPicker(selection: $server)
-                if let id = server, let prefix = store.state(id).info?.bundlePrefix {
-                    Section {
-                        Toggle("Use \(prefix).*", isOn: $rename)
-                    } footer: {
-                        Text("Keeps the last part of the app's bundle ID and replaces the rest with \(prefix), so it can be signed with this Mac's team.")
-                    }
+                if let id = server, store.state(id).info?.signingEnabled == true {
+                    BundlePrefixSection(server: id, rename: $rename, prefix: $prefix, saveAsDefault: $saveAsDefault)
                 }
                 if let up = store.upload {
                     Section {
@@ -325,21 +324,78 @@ struct UploadView: View {
                 ToolbarItem(placement: .cancellationAction) { Button(done == nil ? "Cancel" : "Done") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if done == nil {
-                        Button("Upload") { start() }.disabled(server == nil || store.upload != nil)
+                        Button("Upload") { start() }
+                            .disabled(server == nil || store.upload != nil || (rename && !BundlePrefixSection.isValid(prefix)))
                     }
                 }
             }
             .interactiveDismissDisabled(store.upload != nil)
             .onAppear { server = server ?? store.servers.first(where: { store.canWrite(on: $0.id) })?.id ?? store.servers.first?.id }
+            .onChange(of: server, initial: true) { loadPrefix() }
+            .onChange(of: server.flatMap { store.state($0).info }) { loadPrefix() }
         }
     }
 
     private func start() {
         guard let server else { return }
         error = nil
+        let prefix = self.prefix.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespaces))
         Task {
-            do { done = try await store.uploadIPA(file, notes: notes, rename: rename, on: server) }
-            catch { self.error = error.localizedDescription }
+            do {
+                if saveAsDefault { try await store.updateBundlePrefix(prefix, rename: rename, on: server) }
+                done = try await store.uploadIPA(file, notes: notes, rename: rename && !prefix.isEmpty, prefix: prefix, on: server)
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    /// Fills the prefix from the Mac once its info arrives (and again when switching Macs), keeping the user's edits.
+    private func loadPrefix() {
+        guard let server, store.state(server).info != nil, prefixLoadedFor != server else { return }
+        prefixLoadedFor = server
+        prefix = store.savedPrefix(on: server)
+        rename = store.renamesByDefault(on: server) || prefix.isEmpty
+        saveAsDefault = false
+    }
+}
+
+/// Bundle ID prefix for an upload, with the option to save it as the Mac's default.
+struct BundlePrefixSection: View {
+    @Environment(StoreModel.self) private var store
+    let server: UUID
+    @Binding var rename: Bool
+    @Binding var prefix: String
+    @Binding var saveAsDefault: Bool
+
+    static func isValid(_ s: String) -> Bool {
+        let clean = s.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespaces))
+        return clean.isEmpty || clean.wholeMatch(of: /[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*/) != nil
+    }
+
+    private var saved: String { store.savedPrefix(on: server) }
+    private var trimmed: String { prefix.trimmingCharacters(in: CharacterSet(charactersIn: ". ").union(.whitespaces)) }
+
+    var body: some View {
+        Section {
+            Toggle("Move to my bundle ID prefix", isOn: $rename)
+            if rename {
+                TextField("Prefix", text: $prefix, prompt: Text("com.example"))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                if trimmed != saved {
+                    Toggle("Save as \(store.server(server)?.name ?? "this Mac")'s default", isOn: $saveAsDefault)
+                }
+            }
+        } header: {
+            Text("Bundle ID")
+        } footer: {
+            if rename && !Self.isValid(prefix) {
+                Text("Use letters, digits and hyphens, separated by dots.").foregroundStyle(.red)
+            } else if rename && !trimmed.isEmpty {
+                Text("com.someone.App becomes \(trimmed).App, so apps from other developers can be signed with this Mac's team.")
+            } else {
+                Text("Apps from other developers need your own prefix (like com.yourname) to be signed with this Mac's team.")
+            }
         }
     }
 }
