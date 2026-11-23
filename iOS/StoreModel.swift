@@ -261,6 +261,37 @@ final class StoreModel {
         updatePolling()
     }
 
+    // MARK: Deleting (over Tailscale, which the Mac trusts without a token)
+
+    /// Deletes every version of an app from the Mac.
+    func deleteApp(_ app: CatalogApp, on id: UUID) async throws {
+        try await post("api/apps/\(app.bundleId)", on: id, viaTailscale: true, method: "DELETE")
+        await refresh(id)
+    }
+
+    func deleteVersion(_ v: CatalogVersion, on id: UUID) async throws {
+        try await post("api/apps/\(v.bundleId)/\(v.id)", on: id, viaTailscale: true, method: "DELETE")
+        await refresh(id)
+    }
+
+    /// Keeps only the newest version of an app.
+    func deleteOlderVersions(_ app: CatalogApp, on id: UUID) async throws {
+        try await post("api/apps/\(app.bundleId)/prune?keep=1", on: id, viaTailscale: true)
+        await refresh(id)
+    }
+
+    /// Removes a project from the Mac (its source and published builds stay).
+    func removeProject(_ project: CatalogProject, on id: UUID) async throws {
+        try await post("api/projects/\(project.id)", on: id, viaTailscale: true, method: "DELETE")
+        await refresh(id)
+    }
+
+    /// Removes a repo, its checkout and build targets (published apps stay).
+    func removeRepo(_ repo: CatalogRepo, on id: UUID) async throws {
+        try await post("api/repos/\(repo.id)", on: id, viaTailscale: true, method: "DELETE")
+        await refresh(id)
+    }
+
     private func post(_ path: String, on id: UUID, body: Data? = nil, viaTailscale: Bool = false,
                       method: String = "POST") async throws {
         let base = viaTailscale ? server(id)?.tailscaleURL : (states[id]?.base ?? server(id)?.candidates.first)

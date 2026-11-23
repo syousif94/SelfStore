@@ -13,6 +13,7 @@ struct RepoRow: View {
     @Environment(StoreModel.self) private var store
     let repo: CatalogRepo
     let serverID: UUID
+    @State private var deleting: PendingDelete?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -27,6 +28,12 @@ struct RepoRow: View {
             PullButton(repo: repo, serverID: serverID, busy: building)
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button("Remove Repo", systemImage: "trash", role: .destructive) {
+                deleting = store.confirmRemoveRepo(repo, on: serverID)
+            }
+        }
+        .deleteConfirmation($deleting)
     }
 
     private var building: Bool {
@@ -101,7 +108,9 @@ struct RepoGlyph: View {
 
 struct RepoDetailView: View {
     @Environment(StoreModel.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let ref: SourceRef
+    @State private var deleting: PendingDelete?
 
     var body: some View {
         let state = store.state(ref.server)
@@ -142,6 +151,17 @@ struct RepoDetailView: View {
             .navigationTitle(repo.name)
             .navigationBarTitleDisplayMode(.inline)
             .refreshable { await store.refresh(ref.server) }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Remove Repo", systemImage: "trash", role: .destructive) {
+                            deleting = store.confirmRemoveRepo(repo, on: ref.server)
+                        }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                        .accessibilityLabel("More")
+                }
+            }
+            .deleteConfirmation($deleting) { dismiss() }
         } else {
             ContentUnavailableView("Repo Removed", systemImage: "trash")
         }

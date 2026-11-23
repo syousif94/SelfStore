@@ -88,6 +88,9 @@ struct LibraryView: View {
                                     }
                                 }
                                 if !builders.isEmpty { Divider() }
+                                if app.versions.count > 1 {
+                                    Button("Delete Older Versions", role: .destructive) { _ = try? library.prune(bundleId: app.bundleId, keep: 1) }
+                                }
                                 Button("Delete All Versions", role: .destructive) { try? library.delete(bundleId: app.bundleId) }
                             }
                         case .project(let p):
@@ -355,6 +358,8 @@ struct AppDetailView: View {
     @State private var library = AppLibrary.shared
     @State private var signing = SigningManager.shared
     @State private var error: String?
+    @State private var confirmDeleteApp = false
+    @State private var confirmPrune = false
 
     var body: some View {
         Form {
@@ -403,12 +408,34 @@ struct AppDetailView: View {
                     Text("Each build is signed for your devices and added here as a new version.").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Section("Versions") {
+            Section {
                 ForEach(app.versions) { v in VersionRow(v: v) }
+            } header: {
+                HStack {
+                    Text("Versions")
+                    Spacer()
+                    if app.versions.count > 1 {
+                        Button("Delete Older Versions") { confirmPrune = true }
+                            .buttonStyle(.link).font(.caption)
+                    }
+                    Button("Delete App") { confirmDeleteApp = true }
+                        .buttonStyle(.link).font(.caption).foregroundStyle(.red)
+                }
             }
         }
         .formStyle(.grouped)
         .navigationTitle(app.name)
+        .confirmationDialog("Delete \(app.versions.count - 1) older version\(app.versions.count == 2 ? "" : "s") of \(app.name)?",
+                            isPresented: $confirmPrune) {
+            Button("Delete Older Versions", role: .destructive) {
+                do { _ = try library.prune(bundleId: app.bundleId, keep: 1) } catch { self.error = error.localizedDescription }
+            }
+        } message: { Text("Keeps only \(app.latest.displayVersion).") }
+        .confirmationDialog("Delete \(app.name)?", isPresented: $confirmDeleteApp) {
+            Button("Delete App", role: .destructive) {
+                do { try library.delete(bundleId: app.bundleId) } catch { self.error = error.localizedDescription }
+            }
+        } message: { Text("Deletes all \(app.versions.count) version\(app.versions.count == 1 ? "" : "s"). Projects and repos that build it stay.") }
     }
 }
 

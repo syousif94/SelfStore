@@ -268,6 +268,10 @@ private struct AppRow: View {
     var showMac = false
 
     @State private var error: String?
+    /// True while a finger is on the Install button. List hoists the row's context menu to the whole cell,
+    /// so holding the button (which builds) would also open it; the menu is emptied meanwhile.
+    @State private var installPressed = false
+    @State private var deleting: PendingDelete?
 
     private var active: CatalogProject? { projects.first(where: \.isActive) }
     /// The project holding Install builds: the most recently built one.
@@ -294,7 +298,7 @@ private struct AppRow: View {
             Spacer(minLength: 8)
             }
             .contentShape(Rectangle())
-            .contextMenu { menu }
+            .contextMenu { if !installPressed { menu } }
             // Install by default; hold it to build. While a build runs, a spinning ring around a stop button cancels it.
             if let p = active {
                 BuildButton(project: p, serverID: serverID)
@@ -304,13 +308,14 @@ private struct AppRow: View {
                         do { try await store.build(p, on: serverID) }
                         catch { self.error = error.localizedDescription }
                     } }
-                })
+                }, pressing: $installPressed)
             }
         }
         .padding(.vertical, 4)
         .alert("Couldn't Start Build", isPresented: .constant(error != nil)) {
             Button("OK") { error = nil }
         } message: { Text(error ?? "") }
+        .deleteConfirmation($deleting)
     }
 
     @ViewBuilder private var menu: some View {
@@ -327,6 +332,15 @@ private struct AppRow: View {
                     }
                 }
             }
+            Divider()
+            if app.versions.count > 1 {
+                Button("Delete Older Versions", systemImage: "clock.arrow.circlepath", role: .destructive) {
+                    deleting = store.confirmDeleteOlderVersions(app, on: serverID)
+                }
+            }
+            Button("Delete App", systemImage: "trash", role: .destructive) {
+                deleting = store.confirmDeleteApp(app, on: serverID)
+            }
     }
 }
 
@@ -335,6 +349,7 @@ private struct ProjectRow: View {
     let project: CatalogProject
     let serverID: UUID
     var showMac = false
+    @State private var deleting: PendingDelete?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -350,6 +365,14 @@ private struct ProjectRow: View {
             BuildButton(project: project, serverID: serverID)
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            if project.repoId == nil {
+                Button("Remove Project", systemImage: "trash", role: .destructive) {
+                    deleting = store.confirmRemoveProject(project, on: serverID)
+                }
+            }
+        }
+        .deleteConfirmation($deleting)
     }
 }
 
@@ -419,6 +442,9 @@ struct InstallButton: View {
     var title = "Install"
     /// Holding the button runs this instead of installing (the list uses it to start a build).
     var onHold: (() -> Void)? = nil
+    /// Set while a finger is down on the button.
+    var pressing: Binding<Bool>? = nil
+    @GestureState private var touching = false
     @State private var held = false
     @State private var holds = 0
 
@@ -439,6 +465,10 @@ struct InstallButton: View {
                 .onChanged { _ in held = false }
                 .onEnded { _ in held = true; holds += 1; onHold?() },
             isEnabled: onHold != nil)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0).updating($touching) { _, s, _ in s = true },
+            isEnabled: pressing != nil)
+        .onChange(of: touching) { _, t in pressing?.wrappedValue = t }
         .sensoryFeedback(.impact(weight: .medium), trigger: holds)
         .accessibilityAction(named: "Build") { onHold?() }
     }
@@ -448,8 +478,11 @@ struct InstallButton: View {
 
 struct AppDetailView: View {
     @Environment(StoreModel.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let ref: SourceRef
     @State private var error: String?
+    @State private var deleting: PendingDelete?
+    @State private var deletingApp = false
 
     var body: some View {
         if let app = store.state(ref.server).apps.first(where: { $0.bundleId == ref.id }) {
@@ -519,8 +552,17 @@ struct AppDetailView: View {
                         Text("\(store.server(ref.server)?.name ?? "The Mac") signs this build for the App Store and uploads it to App Store Connect.")
                     }
                 }
-                Section("Versions") {
-                    ForEach(app.versions) { v in VersionRow(version: v, serverID: ref.server) }
+                Section {
+                    ForEach(app.versions) { v in
+                        VersionRow(version: v, serverID: ref.server, onDelete: { deleteVersion(v, of: app) })
+                            .swipeActions {
+                                Button("Delete", systemImage: "trash", role: .destructive) { deleteVersion(v, of: app) }
+                            }
+                    }
+                } header: {
+                    Text("Versions")
+                } footer: {
+                    if app.versions.count > 1 { Text("Swipe a version to delete it.") }
                 }
                 Section("Information") {
                     LabeledContent("Bundle ID", value: app.bundleId)
@@ -538,11 +580,37 @@ struct AppDetailView: View {
             .navigationTitle(app.name)
             .navigationBarTitleDisplayMode(.inline)
             .refreshable { await store.refresh(ref.server) }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if app.versions.count > 1 {
+                            Button("Delete Older Versions", systemImage: "clock.arrow.circlepath", role: .destructive) {
+                                deleting = store.confirmDeleteOlderVersions(app, on: ref.server)
+                            }
+                        }
+                        Button("Delete App", systemImage: "trash", role: .destructive) { deleting = appDeletion(app) }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                        .accessibilityLabel("More")
+                }
+            }
             .alert("Couldn't Upload", isPresented: .constant(error != nil), actions: { Button("OK") { error = nil } },
                    message: { Text(error ?? "") })
+            .deleteConfirmation($deleting) { if deletingApp { dismiss() } }
         } else {
             ContentUnavailableView("App Removed", systemImage: "trash")
         }
+    }
+
+    private func deleteVersion(_ v: CatalogVersion, of app: CatalogApp) {
+        deleting = app.versions.count == 1 ? appDeletion(app) : store.confirmDeleteVersion(v, on: ref.server)
+    }
+
+    /// Deleting the whole app (or its last version) leaves nothing to show, so the screen closes afterwards.
+    private func appDeletion(_ app: CatalogApp) -> PendingDelete {
+        var d = store.confirmDeleteApp(app, on: ref.server)
+        let action = d.action
+        d.action = { deletingApp = true; do { try await action() } catch { deletingApp = false; throw error } }
+        return d
     }
 }
 
@@ -550,6 +618,7 @@ private struct VersionRow: View {
     @Environment(StoreModel.self) private var store
     let version: CatalogVersion
     let serverID: UUID
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top) {
@@ -574,6 +643,7 @@ private struct VersionRow: View {
                 }
                 .disabled(version.testFlight?.isActive == true)
             }
+            Button("Delete Version", systemImage: "trash", role: .destructive) { onDelete?() }
         }
     }
 }
@@ -607,7 +677,9 @@ struct TestFlightStatusView: View {
 
 struct ProjectDetailView: View {
     @Environment(StoreModel.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let ref: SourceRef
+    @State private var deleting: PendingDelete?
 
     var body: some View {
         if let p = store.state(ref.server).projects.first(where: { $0.id == ref.id }) {
@@ -682,6 +754,19 @@ struct ProjectDetailView: View {
             .navigationTitle(p.name)
             .navigationBarTitleDisplayMode(.inline)
             .refreshable { await store.refresh(ref.server) }
+            .toolbar {
+                if p.repoId == nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Button("Remove Project", systemImage: "trash", role: .destructive) {
+                                deleting = store.confirmRemoveProject(p, on: ref.server)
+                            }
+                        } label: { Image(systemName: "ellipsis.circle") }
+                            .accessibilityLabel("More")
+                    }
+                }
+            }
+            .deleteConfirmation($deleting) { dismiss() }
         } else {
             ContentUnavailableView("Project Removed", systemImage: "trash")
         }
@@ -903,5 +988,79 @@ struct AddMacView: View {
             catch { self.error = error.localizedDescription }
             busy = nil
         }
+    }
+}
+
+// MARK: - Deleting
+
+/// A deletion waiting for the person to confirm it.
+struct PendingDelete: Identifiable {
+    let id = UUID()
+    var title: String
+    var message: String
+    var button: String
+    var action: @MainActor () async throws -> Void
+}
+
+/// Asks before running a `PendingDelete`, shows its error, and calls `onDone` after it succeeds.
+private struct DeleteConfirmation: ViewModifier {
+    @Binding var pending: PendingDelete?
+    var onDone: (() -> Void)?
+    @State private var error: String?
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(pending?.title ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                                titleVisibility: .visible, presenting: pending) { p in
+                Button(p.button, role: .destructive) {
+                    Task {
+                        do { try await p.action(); onDone?() }
+                        catch { self.error = error.localizedDescription }
+                    }
+                }
+            } message: { p in Text(p.message) }
+            .alert("Couldn't Delete", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+                Button("OK") { error = nil }
+            } message: { Text(error ?? "") }
+    }
+}
+
+extension View {
+    func deleteConfirmation(_ pending: Binding<PendingDelete?>, onDone: (() -> Void)? = nil) -> some View {
+        modifier(DeleteConfirmation(pending: pending, onDone: onDone))
+    }
+}
+
+extension StoreModel {
+    func confirmDeleteApp(_ app: CatalogApp, on id: UUID) -> PendingDelete {
+        let n = app.versions.count
+        return PendingDelete(title: "Delete \(app.name)?",
+                             message: "Deletes \(n == 1 ? "its only version" : "all \(n) versions") from \(server(id)?.name ?? "the Mac"). Projects and repos that build it stay.",
+                             button: "Delete App") { try await self.deleteApp(app, on: id) }
+    }
+
+    func confirmDeleteOlderVersions(_ app: CatalogApp, on id: UUID) -> PendingDelete {
+        let n = app.versions.count - 1
+        return PendingDelete(title: "Delete \(n) Older Version\(n == 1 ? "" : "s")?",
+                             message: "Keeps only \(app.latest?.displayVersion ?? "the newest version") of \(app.name).",
+                             button: "Delete Older Versions") { try await self.deleteOlderVersions(app, on: id) }
+    }
+
+    func confirmDeleteVersion(_ v: CatalogVersion, on id: UUID) -> PendingDelete {
+        PendingDelete(title: "Delete \(v.name) \(v.displayVersion)?",
+                      message: "Deletes this .ipa from \(server(id)?.name ?? "the Mac").",
+                      button: "Delete Version") { try await self.deleteVersion(v, on: id) }
+    }
+
+    func confirmRemoveProject(_ p: CatalogProject, on id: UUID) -> PendingDelete {
+        PendingDelete(title: "Remove \(p.name)?",
+                      message: "Removes the project from \(server(id)?.name ?? "the Mac"). Its source and any builds already in the library stay.",
+                      button: "Remove Project") { try await self.removeProject(p, on: id) }
+    }
+
+    func confirmRemoveRepo(_ r: CatalogRepo, on id: UUID) -> PendingDelete {
+        PendingDelete(title: "Remove \(r.name)?",
+                      message: "Deletes the checkout and its build targets from \(server(id)?.name ?? "the Mac"). Apps already in the library stay.",
+                      button: "Remove Repo") { try await self.removeRepo(r, on: id) }
     }
 }

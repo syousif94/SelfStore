@@ -274,8 +274,12 @@ final class ServerController {
         default: break
         }
 
-        // Everything below changes the library.
-        guard authorized(req) else {
+        // Everything below changes the library. The iOS app may delete apps, versions, projects and repos
+        // (and prune old versions) over Tailscale without the token, like uploads.
+        let phoneCleanup = req.isViaTailscale
+            && (method == "DELETE" && ["apps", "projects", "repos"].contains(p.first ?? "")
+                || method == "POST" && p.count == 3 && p[0] == "apps" && p[2] == "prune")
+        guard phoneCleanup || authorized(req) else {
             return .error(401, "Uploads from other machines need 'Authorization: Bearer <token>' (token is in SelfStore Settings).")
         }
         switch (method, p.count) {
