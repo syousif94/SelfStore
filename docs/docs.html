@@ -260,7 +260,7 @@ td { color: var(--muted); }
         <h2>Prebuilt .ipa files</h2>
         <p>Commit the .ipa and point an <code>ipa</code> entry at it. On every pull SelfStore compares the file with the last one it imported, and imports it again only when it changed. The newest five versions are kept.</p>
         <p>The .ipa can be signed any way you like: development, ad hoc, or not at all. SelfStore re-signs it with the user's own certificate for their registered devices and keeps the entitlements their App ID allows.</p>
-        <p>Bundle IDs are rewritten to the user's prefix (Settings ▸ Bundle IDs). With a prefix of <code>com.you</code>, <code>com.acme.Notes</code> installs as <code>com.you.Notes</code>, and its extensions, app groups and iCloud containers move with it.</p>
+        <p>Bundle IDs are rewritten to the user's prefix (Settings ▸ Bundle IDs). With a prefix of <code>com.you</code>, <code>com.acme.Notes</code> installs as <code>com.you.Notes</code>, and its extensions, app groups and iCloud containers move with it. This applies to <code>ipa</code> entries only; projects SelfStore builds keep their own bundle ID.</p>
         <div class="note"><strong>Large files:</strong> .ipa files tracked with Git LFS work when <code>git-lfs</code> is installed on the Mac.</div>
       </div>
       <div class="code">

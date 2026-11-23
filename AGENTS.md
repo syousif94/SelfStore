@@ -58,6 +58,8 @@ With a prefix set in Settings ▸ Bundle IDs (`GET /api/info` → `bundlePrefix`
 the app's ID and replaces the rest: `com.someone.Notes` → `<prefix>.Notes`. Extensions nested under the app's ID keep
 their tail (`com.someone.Notes.Share` → `<prefix>.Notes.Share`); app groups, iCloud containers and keychain groups
 follow. It happens while re-signing, so the original upload is kept and re-signs/TestFlight uploads repeat it.
+Only .ipa files (uploads and repo `ipa:` entries) are renamed; apps SelfStore builds from Xcode projects keep
+their project's bundle ID.
 Versions record `originalBundleId`. Renaming needs signing to be set up; IDs already on the prefix are left alone.
 
 ## TestFlight
@@ -116,7 +118,7 @@ apps:
 ```
 
 - Branches other than the repo's default get the branch name appended to the app's bundle ID
-  (`<prefix>.Widgets.beta`), so they install side by side. Each branch can carry its own selfstore.yml.
+  (`com.you.Widgets.beta`), so they install side by side. Each branch can carry its own selfstore.yml.
 - `POST /api/repos` with JSON `{"url": "https://github.com/owner/repo", "build": true}`: add, clone and pull
   (from this Mac, with the token, or from a tailnet device). `owner/repo` is shorthand for GitHub.
 - `GET /api/repos`, `GET /api/repos/<id>`: `state` (idle, pulling, failed), `step`, `error`, `branches` (name, commit,

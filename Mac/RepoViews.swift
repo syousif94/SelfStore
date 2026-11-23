@@ -206,7 +206,7 @@ struct BundleIDSection: View {
     var body: some View {
         Section {
             TextField("Prefix", text: $settings.bundlePrefix, prompt: Text("com.example"))
-            Toggle("Move uploads, repo apps and builds to this prefix", isOn: $settings.renameImports)
+            Toggle("Move uploaded and repo .ipa files to this prefix", isOn: $settings.renameImports)
                 .disabled(settings.bundlePrefix.trimmingCharacters(in: .whitespaces).isEmpty)
             if let example = BundleRename.target(for: "com.someone.Notes", prefix: settings.bundlePrefix, suffix: nil),
                settings.renameImports {

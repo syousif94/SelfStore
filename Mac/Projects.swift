@@ -304,8 +304,9 @@ final class ProjectStore {
                 notes = [p.notes, "\(branch) @ \(short): \(commit.subject)"].compactMap { $0 }.joined(separator: "\n")
                 sourceLabel = "\(RepoStore.shared.repo(p.repoId ?? "")?.name ?? "repo") \(branch) @ \(short)"
             }
+            // Source builds keep the project's own bundle ID; only imported .ipa files move to the prefix.
             let v = try await AppLibrary.shared.importIPA(at: ipa, move: true, notes: notes, replace: true,
-                                                          idSuffix: p.idSuffix, sourceLabel: sourceLabel)
+                                                          rename: false, idSuffix: p.idSuffix, sourceLabel: sourceLabel)
             // On-demand builds pile up quickly; keep the newest few.
             _ = try? AppLibrary.shared.prune(bundleId: v.bundleId, keep: 5)
             update(id) {

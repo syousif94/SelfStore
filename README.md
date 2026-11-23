@@ -23,7 +23,8 @@ Host ad hoc signed iOS apps on your Mac, including multiple versions of each, an
 - **Uploads from anywhere**: drop an `.ipa` on the Library window, pick one in the iOS app (or share it to SelfStore from
   Files/Safari), or `POST /api/apps`.
 - **Bundle ID prefix**: set your prefix in Settings ▸ Bundle IDs and SelfStore moves other developers' apps to it when it
-  re-signs them (`com.someone.Notes` → `com.you.Notes`), so they sign with your team.
+  re-signs them (`com.someone.Notes` → `com.you.Notes`), so they sign with your team. Only `.ipa` files are renamed;
+  apps built from Xcode projects keep their own bundle ID.
 - **Multiple Macs**: the iOS app shows apps and projects from every Mac you add, side by side.
 - **Safari**: open the Tailscale URL on the phone to get the same list with Install buttons, no app needed.
 
