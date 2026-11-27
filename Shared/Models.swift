@@ -24,6 +24,7 @@ public struct CatalogVersion: Codable, Identifiable, Hashable, Sendable {
     public var testFlight: CatalogTestFlight? = nil
     public var originalBundleId: String? = nil   // set when the Mac moved the app to its bundle ID prefix
     public var source: String? = nil             // "Upload", "Build of X", "owner/repo main @ abc1234"
+    public var signingWarnings: [String]? = nil  // entitlements dropped while re-signing, and what to do about them
 
     public var displayVersion: String { build.isEmpty || build == version ? version : "\(version) (\(build))" }
 }

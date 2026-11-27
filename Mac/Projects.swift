@@ -356,6 +356,7 @@ final class ProjectStore {
                 $0.lastBuild?.state = .succeeded
                 $0.lastBuild?.step = "Built \(v.displayVersion)"
                 $0.lastBuild?.versionId = v.id
+                $0.lastBuild?.warnings = v.signingWarnings
                 $0.lastBuild?.finishedAt = Date()
                 $0.lastBuild?.logTail = nil
             }

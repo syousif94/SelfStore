@@ -140,6 +140,28 @@ struct ASCClient: Sendable {
         return id
     }
 
+    /// Capability types already enabled on a bundle ID (APP_GROUPS, ICLOUD…).
+    func capabilities(bundleIDResource: String) async throws -> Set<String> {
+        let items = try await list("/v1/bundleIds/\(bundleIDResource)/bundleIdCapabilities", query: [:])
+        return Set(items.compactMap { Self.attrs($0)["capabilityType"] as? String })
+    }
+
+    /// Turns a capability on for a bundle ID. App groups and iCloud containers can't be attached through
+    /// the API; that's still done once in the developer portal (or by Xcode).
+    func enableCapability(_ type: String, bundleIDResource: String) async throws {
+        var attributes: [String: Any] = ["capabilityType": type]
+        if type == "ICLOUD" {
+            attributes["settings"] = [["key": "ICLOUD_VERSION", "options": [["key": "XCODE_6", "enabled": true]]]]
+        }
+        try await request("POST", "/v1/bundleIdCapabilities", body: [
+            "data": [
+                "type": "bundleIdCapabilities",
+                "attributes": attributes,
+                "relationships": ["bundleId": ["data": ["type": "bundleIds", "id": bundleIDResource]]],
+            ],
+        ])
+    }
+
     // MARK: Certificates
 
     func distributionCertificates() async throws -> [Certificate] {

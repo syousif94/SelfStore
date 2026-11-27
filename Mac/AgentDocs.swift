@@ -46,7 +46,10 @@ enum AgentDocs {
 
         App extensions (.appex) need the same `codesign -s - --entitlements …` before the app itself.
         SelfStore keeps the entitlements that the App ID allows.
-        Entitlements it drops are listed in the version's `signingWarnings`. Each bundle ID (including extensions) is
+        SelfStore turns on the App ID capabilities those entitlements need (App Groups, iCloud,
+        push…) and remakes a cached profile that doesn't allow them. App groups and iCloud containers can't be attached
+        through the API: attach them once in the developer portal, then build again. Entitlements it drops, and what to do,
+        are listed in the version's `signingWarnings` and in a project's `warnings`. Each bundle ID (including extensions) is
         created on the developer account automatically if it doesn't exist. Apps containing a Watch app can't be re-signed yet.
 
         When `"ready": false`, the .ipa must already be ad hoc signed with the target devices in its profile.

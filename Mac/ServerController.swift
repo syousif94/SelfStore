@@ -526,7 +526,7 @@ final class ServerController {
             testFlight: v.testFlight.map {
                 CatalogTestFlight(state: $0.state.rawValue, step: $0.step, error: $0.error, startedAt: $0.startedAt, finishedAt: $0.finishedAt)
             },
-            originalBundleId: v.originalBundleId, source: v.source)
+            originalBundleId: v.originalBundleId, source: v.source, signingWarnings: v.signingWarnings)
     }
 
     func catalogApp(_ a: StoredApp, _ req: HTTPRequest?) -> CatalogApp {
