@@ -85,6 +85,7 @@ registered devices and publishes it (keeping the newest 5 builds). Build numbers
 - `POST /api/projects/<id>/build`, `POST /api/projects/<id>/cancel`
 - `GET /api/projects/<id>/log`: full xcodebuild log
 - `DELETE /api/projects/<id>`: remove (doesn't touch the source or published builds)
+- `GET /api/settings/builds-folder`, `PUT /api/settings/builds-folder` with `{"path": "/Volumes/Drive/SelfStore"}` (this Mac only; empty for the default): where builds (DerivedData, logs, Mac files) are kept. Changing it moves existing builds; refused (409) while builds run
 
 ### Mac app projects
 

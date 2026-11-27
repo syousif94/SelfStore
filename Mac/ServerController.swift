@@ -336,6 +336,21 @@ final class ServerController {
         case ("POST", 2) where p[0] == "signing" && p[1] == "refresh":
             await signing.refresh()
             return .json(signing.apiStatus)
+        case ("GET", 2) where p[0] == "settings" && p[1] == "builds-folder":
+            return .json(buildsFolderStatus())
+        case ("PUT", 2) where p[0] == "settings" && p[1] == "builds-folder":
+            // Local only: moves every project's build folder on this Mac, like the Settings button.
+            guard req.isLocalDirect else { return .error(403, "Change the builds folder from this Mac") }
+            let body = (req.bodyData.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:]
+            let raw = (body["path"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+            guard raw.isEmpty || raw.hasPrefix("/") else { return .error(400, "path must be absolute, or empty/null for the default") }
+            do {
+                try await projects.setBuildsFolder(raw.isEmpty ? nil : URL(fileURLWithPath: raw, isDirectory: true))
+            } catch let e as ProjectError {
+                return .error(409, e.localizedDescription)
+            }
+            note("Builds folder set to \(settings.buildsRoot.path)")
+            return .json(buildsFolderStatus())
         case ("POST", 2) where p[0] == "signing" && p[1] == "developer-id":
             // Local only: creates a Developer ID Application certificate with the API key, like the Settings button.
             guard req.isLocalDirect else { return .error(403, "Create the certificate from this Mac") }
@@ -431,6 +446,12 @@ final class ServerController {
     }
 
     /// `PATCH /api/settings` with `{"bundlePrefix": "com.example", "renameImports": true}` (either key optional).
+    private func buildsFolderStatus() -> [String: String] {
+        ["path": settings.buildsRoot.path, "default": Settings.defaultBuildsRoot.path,
+         "custom": settings.usesCustomBuildsFolder ? "true" : "false",
+         "available": settings.buildsRootAvailable ? "true" : "false"]
+    }
+
     private func updateSettings(_ req: HTTPRequest) throws -> HTTPResponse {
         let body = (req.bodyData.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:]
         if let raw = body["bundlePrefix"] as? String {

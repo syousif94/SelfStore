@@ -65,7 +65,40 @@ final class ProjectStore {
     private let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("SelfStore", isDirectory: true)
     private var file: URL { root.appendingPathComponent("projects.json") }
-    func buildDir(_ id: String) -> URL { root.appendingPathComponent("builds/\(id)", isDirectory: true) }
+    func buildDir(_ id: String) -> URL { Settings.shared.buildsRoot.appendingPathComponent(id, isDirectory: true) }
+
+    private(set) var movingBuilds = false
+
+    /// Points builds at a new folder (nil = the default) and moves the existing builds there, so logs and Mac
+    /// downloads keep working. Refused while a build is queued or running.
+    func setBuildsFolder(_ url: URL?) async throws {
+        guard !isBusy, queue.isEmpty, !movingBuilds else {
+            throw ProjectError.message("Wait for the current builds to finish before changing the builds folder")
+        }
+        let settings = Settings.shared
+        let old = settings.buildsRoot.standardizedFileURL
+        let new = url?.standardizedFileURL ?? Settings.defaultBuildsRoot.standardizedFileURL
+        guard old != new else { return }
+        if new.path.hasPrefix(old.path + "/") || old.path.hasPrefix(new.path + "/") {
+            throw ProjectError.message("Choose a folder that isn't inside the current builds folder (or the other way round)")
+        }
+        movingBuilds = true
+        defer { movingBuilds = false }
+        try await Task.detached { try Self.moveBuilds(from: old, to: new) }.value
+        settings.setBuildsRoot(url)
+    }
+
+    /// Moves each project's folder; anything already at the destination with the same name is replaced.
+    nonisolated private static func moveBuilds(from old: URL, to new: URL) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: new, withIntermediateDirectories: true)
+        guard let items = try? fm.contentsOfDirectory(at: old, includingPropertiesForKeys: nil) else { return }
+        for item in items where item.lastPathComponent != ".DS_Store" {
+            let dest = new.appendingPathComponent(item.lastPathComponent)
+            if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
+            try fm.moveItem(at: item, to: dest)
+        }
+    }
     func logURL(_ id: String) -> URL { buildDir(id).appendingPathComponent("build.log") }
 
     private init() {
@@ -240,6 +273,15 @@ final class ProjectStore {
 
     private func run(_ id: String) async {
         guard let p = project(id) else { return }
+        guard Settings.shared.buildsRootAvailable else {
+            update(id) {
+                $0.lastBuild?.state = .failed
+                $0.lastBuild?.step = "Failed"
+                $0.lastBuild?.error = "The builds folder \(Settings.shared.buildsFolder) isn't available. Connect its drive or change it in Settings."
+                $0.lastBuild?.finishedAt = Date()
+            }
+            return
+        }
         setStep(id, .building, "Starting xcodebuild…")
         let dir = buildDir(id)
         let fm = FileManager.default

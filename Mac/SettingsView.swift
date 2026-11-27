@@ -1,6 +1,61 @@
 import AppKit
 import SwiftUI
 
+/// Where project builds go: the default in Application Support, or a folder of the user's (e.g. on an external drive).
+struct BuildsFolderSection: View {
+    @State private var settings = Settings.shared
+    @State private var projects = ProjectStore.shared
+    @State private var error: String?
+
+    var body: some View {
+        Section {
+            LabeledContent("Folder") {
+                HStack {
+                    if projects.movingBuilds { ProgressView().controlSize(.small) }
+                    Text(settings.usesCustomBuildsFolder ? settings.buildsRoot.path : "Default (Application Support)")
+                        .textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(settings.buildsRootAvailable ? .primary : Color.red)
+                }
+            }
+            if !settings.buildsRootAvailable {
+                Text("This folder isn't available. Connect its drive, or choose another folder.")
+                    .font(.caption).foregroundStyle(.red)
+            }
+            HStack {
+                Button("Choose…", action: choose)
+                Button("Use Default") { change(nil) }.disabled(!settings.usesCustomBuildsFolder)
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([settings.buildsRoot])
+                }.disabled(!settings.buildsRootAvailable)
+            }
+            .disabled(projects.movingBuilds || projects.isBusy)
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+        } header: {
+            Text("Builds")
+        } footer: {
+            Text("Project builds (Xcode's DerivedData, logs and Mac .dmg/.zip files) are kept here and can take several GB. Changing the folder moves the existing builds. Published apps stay in Application Support.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func choose() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Use Folder"
+        panel.message = "Choose where SelfStore keeps project builds"
+        if panel.runModal() == .OK, let url = panel.url { change(url) }
+    }
+
+    private func change(_ url: URL?) {
+        error = nil
+        Task {
+            do { try await projects.setBuildsFolder(url) } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
 struct SettingsView: View {
     @State private var settings = Settings.shared
     @State private var tailscale = TailscaleManager.shared
@@ -32,6 +87,7 @@ struct SettingsView: View {
             }
             SigningSection()
             BundleIDSection()
+            BuildsFolderSection()
             Section("Agent API") {
                 LabeledContent("Upload", value: "POST \(server.localhostURL.absoluteString)/api/apps")
                 LabeledContent("Token") {
