@@ -142,7 +142,9 @@ struct ASCClient: Sendable {
 
     /// Capability types already enabled on a bundle ID (APP_GROUPS, ICLOUD…).
     func capabilities(bundleIDResource: String) async throws -> Set<String> {
-        let items = try await list("/v1/bundleIds/\(bundleIDResource)/bundleIdCapabilities", query: [:])
+        // A relationship endpoint: it takes no `limit` and isn't paged.
+        let json = try await request("GET", "/v1/bundleIds/\(bundleIDResource)/bundleIdCapabilities")
+        let items = (json["data"] as? [[String: Any]]) ?? []
         return Set(items.compactMap { Self.attrs($0)["capabilityType"] as? String })
     }
 
